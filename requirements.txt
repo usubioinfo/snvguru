@@ -1,0 +1,7 @@
+biopython
+joblib
+matplotlib
+pandas==1.4.1
+seaborn
+xlrd==1.2.0
+distro
