@@ -87,8 +87,8 @@ def downloadTools():
     util.execCmd(f"unzip -o -q download -d {softwareDir}")
     util.execCmd("rm download")
     print("~~~> Testing Hisat2...")
-    output = util.execCmd(f"{softwareDir}/hisat2-2.2.1/hisat2 --version")
-    if "hisat2-2.2.1/hisat2-align-s version 2.2.1" not in output[0].split("\n")[0].strip():
+    output = util.execCmd(f"{softwareDir}/hisat2-2.1.0/hisat2 --version")
+    if "hisat2-2.1.0/hisat2-align-s version 2.1.0" not in output[0].split("\n")[0].strip():
         print("~~~> Test failed.")
         print(output[1])
         util.stopProgram()
