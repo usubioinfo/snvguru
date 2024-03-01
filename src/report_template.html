@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" integrity="sha384-xrRg5Qx3I1+0UhZteC2U/Kuu5KGgsmUcc56OMJ45aJwAeg6Wg0S7xPQvQFSTjQ" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    <script src="https://kit.fontawesome.com/cb3f41c2c0.js" crossorigin="anonymous"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <title>SNV Analysis Report</title>
+    <style>
+        .red-cell {
+            background-color: lightpink !important;
+        }
+        .single-line {
+            white-space: nowrap;
+        }      
+        .white-icon {
+            color: white;
+        }   
+        .image {
+            width: 80%;
+        }
+        .nav-container {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        .main-container {
+            max-height: 100vh;
+            overflow-y: auto;
+        }
+    </style>
+    <script>
+        window.onload = (event) => {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+                var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            })
+        };
+    </script>
+</head>
+<body data-bs-spy="scroll" data-bs-target="toc">
+    <div class="pe-3">
+        <div class="row">
+            <div class="col-2 bg-dark nav-container">
+                <nav id="toc" class="navbar bg-dark flex-column align-items-stretch sticky-top p-3 overflow-auto" data-bs-theme="dark">
+                    <a class="navbar-brand" href="#">Table of Contents</a>
+                    <nav class="nav flex-column nav-underline">
+                        <li class="nav-item">
+                            <a class="nav-link text-light" href="#overview">Overview</a>
+                        </li>
+                        <a class="nav-link link-light" href="#readquality">Read Quality</a>
+                        {% if hostAlignment == "on"  %}
+                            <a class="nav-link text-light" href="#hostalignment">Host Alignment</a>
+                        {% endif %}
+                        <a class="nav-link text-light" href="#pathogenalignment">Pathogen Alignment</a>
+                        {% if qualimap == "on"  %}
+                        <a class="nav-link text-light" href="#alignmentquality">Alignment Quality</a>
+                        {% endif %}
+                        <a class="nav-link text-light" href="#snvcalling">SNV Calling</a>
+                        <a class="nav-link text-light" href="#snpeff">Gene and Functional Effect Identification</a>
+                        <a class="nav-link text-light" href="#assor">Allele-Specific Strand Odds Ratio Calculation</a>
+                        <a class="nav-link text-light" href="#results">Results</a>
+                        <nav class="nav nav-underline flex-column">
+                            {% if callingSoftware == "both" %}
+                            <li class="nav-item"> <a class="nav-link text-light ms-3 my-1" href="#snvs">Common Identified SNVs</a></li>
+                            {% else %}
+                            <li class="nav-item"> <a class="nav-link text-light ms-3 my-1" href="#snvs">Identified SNVs</a></li>
+                            {% endif %}
+                            {% if figGenerateMutationCountBarPlotsPerRun == "on" or figGenerateGlobalMutationCountBarPlots == "on" %}
+                            <li class="nav-item"> <a class="nav-link text-light ms-3 my-1" href="#mutationcountbar">Mutation Count Bar Plot</a></li>
+                            {% endif %}
+                            {% if figGenerateMutationCountBoxPlotsPerRun == "on" or figGenerateGlobalMutationCountBoxPlots == "on" %}
+                            <li class="nav-item"> <a class="nav-link text-light ms-3 my-1" href="#mutationcountbox">Mutation Count Box Plot</a></li>
+                            {% endif %}
+                            {% if figGenerateMutationCountPerGeneBarPlotPerRun == "on" or figGenerateGlobalMutationCountPerGeneBarPlots == "on" %}
+                            <li class="nav-item"> <a class="nav-link text-light ms-3 my-1" href="#genemutationbar">Mutation Count Stacked Bar Plot Per Gene</a></li>
+                            {% endif %}
+                            {% if figGenerateMutationCountPerGeneBoxPlotPerRun == "on" or figGenerateGlobalMutationCountPerGeneBoxPlots == "on" %}
+                            <li class="nav-item"> <a class="nav-link text-light ms-3 my-1" href="#genemutationbox">Mutation Count Box Plot Per Gene</a></li>
+                            {% endif %}
+                            {% if figGenerateGlobalMutationCountPerRunBarPlots == "on"%}
+                            <li class="nav-item"> <a class="nav-link text-light ms-3 my-1" href="#runmutationbar">Mutation Count Per Sample Bar Plot</a></li>
+                            {% endif %}
+                            {% if figGenerateGlobalMutationCountPerRunBoxPlots == "on"%}
+                            <li class="nav-item"> <a class="nav-link text-light ms-3 my-1" href="#runmutationbox">Mutation Count Per Sample Box Plot</a></li>
+                            {% endif %}
+                            {% if figGenerateGlobalFrequencyPerMutationStripPlots == "on"%}
+                            <li class="nav-item"> <a class="nav-link text-light ms-3 my-1" href="#mutationfrequency">Frequency Per Mutation Strip Plot</a></li>
+                            {% endif %}
+                            {% if figGenerateGlobalFrequencyPerGeneStripPlots == "on"%}
+                            <li class="nav-item"> <a class="nav-link text-light ms-3 my-1" href="#genefrequency">Frequency Per Gene Strip Plot</a></li>
+                            {% endif %}
+                            {% if figGenerateGlobalFrequencyPerRunStripPlots == "on"%}
+                            <li class="nav-item"> <a class="nav-link text-light ms-3 my-1" href="#samplefrequency">Frequency Per Sample Strip Plot</a></li>
+                            {% endif %}
+                            {% if figGenerateGlobalDistributionHistogramsPlots == "on"%}
+                            <li class="nav-item"> <a class="nav-link text-light ms-3 my-1" href="#presence">Presence Per Run Position Plot</a></li>
+                            {% endif %}
+                            {% if figGenerateGlobalRegressionPlots == "on"%}
+                            <li class="nav-item"> <a class="nav-link text-light ms-3 my-1" href="#frequencymutationposition">Frequency Per Mutation Position Plot</a></li>
+                            {% endif %}
+                        </nav>
+                    </nav>
+                    </nav>
+                </nav>
+            </div>
+            <div class="col-1"></div>
+            <div class="col-8 main-container">
+                <div class="text-center">
+                    <h1>USU Bioinformatics Core Facility</h1>
+                    <hr>
+                    <h2>SNV Analysis Report</h2>
+                    <hr>
+                    <h3 id="overview">Overview</h3>
+                </div>
+                <p>
+                    <b>Reads Source: </b> {{ readsSource }}
+                    <br>
+                    <b>Total Samples: </b> <a href="{{ resultsDirectory }}/data/fastq">{{ totalSamples }} samples</a>
+                    <br>
+                    <b>Results Directory: </b> <a href="{{ resultsDirectory }}">{{ resultsDirectory }}</a>
+                    <br>
+                    {% if hostAlignment == "on" %}
+                        <b id="pathogengenomes">Reference Host Genome: </b> <a href="{{ referenceHostGenome }}">{{ referenceHostGenome }}</a>
+                        <br>
+                    {% endif %}
+                    <br>
+                    <b>Reference Pathogen Genomes: </b>
+                    <table class="table">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="single-line">Genome file</th>
+                                <th scope="col" class="single-line">Protein file</th>
+                                <th scope="col" class="single-line">Gene file</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for files in pathogenReference %}
+                                <tr>
+                                    <td><a href="{{ files[0] }}">{{ files[0] }}</a></td>
+                                    <td><a href="{{ files[1] }}">{{ files[1] }}</a></td>
+                                    <td><a href="{{ files[2] }}">{{ files[2] }}</a></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <br>
+                    <b id="inputreads">Input Reads: </b>
+                    <table class="table">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="single-line">ID</th>
+                                <th scope="col" class="single-line">Type</th>
+                                <th scope="col" class="single-line">File 1</th>
+                                <th scope="col" class="single-line">File 2</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for input in inputs %}
+                                <tr>
+                                    <td>{{ input[0] }}</td>
+                                    <td>{{ input[1] }}</td>
+                                    <td><a href="{{ input[2] }}">{{ input[2] }}</a></td>
+                                    <td><a href="{{ input[3] }}">{{ input[3] }}</a></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </p>
+                <hr>
+                <div class="text-center">
+                    <h3 id="readquality">Read Quality</h3>
+                </div>
+                <h4>Quality Check</h4>
+                <p>
+                    The quality check was done using <b>FastQC</b> (<a href="https://www.bioinformatics.babraham.ac.uk/projects/fastqc/">https://www.bioinformatics.babraham.ac.uk/projects/fastqc/</a>). This tool analyzes the quality of all reads in fastq files and creates reports that help identify quality issues in high-throughput sequencing datasets. All the results were stored in <a href="1-quality/fastqc">1-quality/fastqc</a>.
+                </p>
+                {% if cropQuality > 0 or cropDecay > 0 %}
+                    <h4>Read Cropping</h4>
+                    <p>
+                        Read cropping was done using <b>{{ cropSoftware }}</b> (<a href="{{ cropWeb }}">{{ cropWeb }}</a>). This tool preprocesses high-throughput sequencing data from next-generation sequencing platforms. It specializes in quality control and trimming of raw sequence reads, removing artifacts, adapters, and low-quality bases. When SNVGuru identifies that a read {% if cropQuality > 0 %} has a mean quality lower than {{ cropQuality }} {% endif %}{% if cropQuality > 0 and cropDecay > 0 %} or {% endif %} {% if cropDecay > 0%}has a quality decay greater than {{ cropDecay }}, it crops the reads down to {{ cropSize }} base pairs{% endif %}. The cropped fastq files were stored in <a href="1-quality/fastq">1-quality/fastq</a>.
+                    </p>
+                {% endif %}
+                <hr>
+                {% if hostAlignment == "on"  %}
+                    <div class="text-center">
+                        <h3 id="hostalignment">Host Alignment</h3>
+                    </div>
+                    <p>
+                        The reads were aligned against a host reference genome in order to remove reads belonging to the host instead of the pathogen, which could alter the results of the analysis. This alignment was done using <b>{{ hostAlignmentSoftware[0] }}</b> (<a href="{{ hostAlignmentSoftware[1] }}">{{ hostAlignmentSoftware[1] }}</a>). {{ hostAlignmentSoftware[2] }}. The initial alignments were stored in SAM format at <a href="2-alignment/host/sam">2-alignment/host/sam</a>. 
+                    </p>
+                    {% if removeAligned == "on" %}
+                    <p>
+                        After doing this, the reads that did not align against the host reference genome were extracted using <b>samtools</b> (<a href="http://www.htslib.org/">http://www.htslib.org/</a>). First, it runs <code>samtools view -F 256</code> on the SAM files, so that every sequence that aligned is ignored and the rest is saved in BAM files at <a href="2-alignment/host/bam">2-alignment/host/bam</a>. Then, it runs <code>samtools bam2fq</code> on the resulting BAM files to transform them into fastq files. These filtered fastq files were stored at <a href="2-alignment/host/fastq">2-alignment/host/fastq</a>. The number of reads are the following:
+                    </p>                 
+                    <table class="table">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="single-line">Sample</th>
+                                <th scope="col" class="single-line">Reads Before Filter</th>
+                                <th scope="col" class="single-line">Reads After Filter</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for totalSequence in totalSequences %}
+                                <tr>
+                                    <td>{{ totalSequence[0] }}</td>
+                                    <td>{{ totalSequence[1] }}</td>
+                                    <td>{{ totalSequence[2] }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% endif %}
+                    <hr>
+                {% endif %}
+                <div class="text-center">
+                    <h3 id="pathogenalignment">Pathogen Alignment</h3>
+                </div>
+                <p>
+                    The reads were aligned against the provided reference pathogen genomes using <b>{{ pathogenAlignmentSoftware[0] }}</b> (<a href="{{ pathogenAlignmentSoftware[1] }}">{{ pathogenAlignmentSoftware[1] }}</a>). {{ pathogenAlignmentSoftware[2] }}. The initial alignments were stored in SAM format at <a href="2-alignment/pathogen/sam">2-alignment/pathogen/sam</a>. Then, using samtools (<a href="http://www.htslib.org/">http://www.htslib.org/</a>), the alignments were sorted and transformed into a BAM file running <code>samtools sort</code>, and finally, the MD and NM tags were added running <code>samtools calmd</code>. These resulting BAM files were stored at <a href="2-alignment/pathogen/bam">2-alignment/pathogen/bam</a>, where the <code>.sorted.bam</code> files are the result of <code>samtools sort</code>, and the <code>.bam</code> files are the final BAM files resulting from <code>samtools calmd</code>.
+                </p>
+                <hr>
+                {% if qualimap == "on"  %}
+                    <div class="text-center">
+                        <h3 id="alignmentquality">Alignment Quality</h3>
+                    </div>
+                    <p>
+                        The alignments against the pathogen reference genome were analyzed using <b>Qualimap 2</b> (<a href="http://qualimap.conesalab.org/">http://qualimap.conesalab.org/</a>). This tool inspects SAM/BAM files, analyzes the features of the mapped reads and generates a report of the aligned data. This helps detect issues in the sequencing and/or mapping of the data. The results were stored at <a href="3-qualimap">3-qualimap</a>.
+                    </p>
+                    {% if removeHighError == "on"  %}
+                        <p>
+                            After the analysis is done, SNVGuru removes the samples that produced a general error rate greater than <b>{{ maxError }}%</b>. The error rates were the following:
+                            
+                            <table class="table">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th scope="col" class="single-line">Reference pathogen</th>
+                                        <th scope="col" class="single-line">ID</th>
+                                        <th scope="col" class="single-line">Error rate (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for error in errors %}
+                                        <tr>
+                                            <td {% if error[2] > maxError %}class="red-cell"{% endif %}>{{ error[0] }}</td>
+                                            <td {% if error[2] > maxError %}class="red-cell"{% endif %}>{{ error[1] }}</td>
+                                            <td {% if error[2] > maxError %}class="red-cell"{% endif %}>{{ error[2] }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </p>
+                    {% endif %}
+                    <hr>
+                {% endif %}
+                <hr>
+                <div class="text-center">
+                    <h3 id="snvcalling">SNV Calling</h3>
+                </div>
+                <p>
+                    The SNV calling step was performed using {% if callingSoftware == "both" %}<b>REDItools2</b> (<a href="https://github.com/BioinfoUNIBA/REDItools2">https://github.com/BioinfoUNIBA/REDItools2</a>) and <b>JACUSA2</b> (<a href="https://github.com/dieterich-lab/JACUSA2">https://github.com/dieterich-lab/JACUSA2</a>){% elif callingSoftware == "jacusa"%}JACUSA2 (<a href="https://github.com/dieterich-lab/JACUSA2">https://github.com/dieterich-lab/JACUSA2</a>){% elif callingSoftware == "reditools"%}REDItools2 (<a href="https://github.com/BioinfoUNIBA/REDItools2">https://github.com/BioinfoUNIBA/REDItools2</a>){% endif %}. 
+                {% if callingSoftware == "both" %} 
+                </p>
+                <p> 
+                {% endif %}
+                    {% if callingSoftware == "both" or callingSoftware == "reditools" %}{% if callingSoftware == "both" %}REDItools2{% elif callingSoftware == "reditools"%}It{% endif %} is a toolkit designed for the analysis of RNA editing events in high-throughput sequencing data, identifying, quantifying, and characterizing RNA editing sites from RNA-seq data. It generates TXT files with the SNV data, which were transformed into VCF files, and these VCF files were also modified for using them as SnpEff inputs. These files were stored at <a href="4-snvCalling/reditools">4-snvCalling/reditools</a>. The files used for SnpEff are named as <code>SAMPLE.reditools.presnpeff.vcf</code>.{% endif %}
+                {% if callingSoftware == "both" %} 
+                </p>
+                <p> 
+                {% endif %}
+                    {% if callingSoftware == "both" or callingSoftware == "jacusa" %}{% if callingSoftware == "both" %}JACUSA2{% elif callingSoftware == "jacusa"%}It{% endif %} is a framework for single nucleotide variant and reverse transcriptase induced arrest event detection in next-generation sequencing data. It generates VCF files with the SNV data, which were then preprocessed for using them as SnpEff inputs. These files were stored at <a href="4-snvCalling/jacusa">4-snvCalling/jacusa</a>. The original output files are named as <code>SAMPLE.jacusa.vcf</code>. while the files used for SnpEff are named as <code>SAMPLE.jacusa.presnpeff.vcf</code>. There are also some files named as <code>SAMPLE.jacusa.vcf.filtered</code> and <code>SAMPLE.jacusa.vcf.filtered.idx</code> that are byproducts of the execution of the program.{% endif %}
+                </p>
+                <hr>
+                <div class="text-center">
+                    <h3 id="snpeff">Gene and Functional Effect Identification</h3>
+                </div>
+                <p>
+                    For identifying the gene and functional effect of each SNV, the VCF files from the previous step were processed with <b>SnpEff</b> (<a href="http://pcingola.github.io/SnpEff/">http://pcingola.github.io/SnpEff/</a>). It is a genetic variant annotation and functional effect prediction toolbox, particularly made for single nucleotide polymorphisms and small insertions/deletions. It categorizes variants based on their impact on genes, classifying them into different functional consequences such as synonymous, nonsynonymous, frameshift, and more. The output files of this tool were stored at <a href="5-snpeff">5-snpeff</a>.
+                </p>
+                <hr>
+                <div class="text-center">
+                    <h3 id="assor">Allele-Specific Strand Odds Ratio Calculation</h3>
+                </div>
+                <p>
+                    The computation of AS strand odds ratio (AS_SOR) was done executing <b>BCFtools</b>' (<a href="https://samtools.github.io/bcftools/">https://samtools.github.io/bcftools/</a>) <code>mpileup</code> on each resulting BAM file from the alignment using the argument <code>-a FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP</code> in order to get the allelic depth of the forward and reverse strands for both the reference and the aligned sequences. The output files are found at <a href="4-snvCalling/depths">4-snvCalling/depths/REFERENCE_NAME/SAMPLE_NAME.mpileup.vcf</a> for each pathogen reference genome and sample pair.
+                </p>
+                <p>
+                    Each output file's last column is named as the path of the respective BAM file. This column has a string that, when split by the colon (:) character, results in six fields. The fourth one is the allelic depth for the forward strand (ADF), and the fifth one is the allelic depth for the reverse strand (ARF). Both fields have two comma-separated values, where the first one corresponds to the reference allele and the second one corresponds to the alternate allele. This leaves us with four values: forward reference depth (FRD), reverse reference depth (RRD), forward alternate depth (FAD) and reverse alternate depth (RAD). The formula for calculating the AS_SOR, according to GATK (<a href="https://gatk.broadinstitute.org/hc/en-us/articles/4414586726683-AS-StrandOddsRatio">https://gatk.broadinstitute.org/hc/en-us/articles/4414586726683-AS-StrandOddsRatio</a>) is as follows:
+                    $$AS\_SOR = {ln(\frac{FAD * RRD}{FRD * RAD}) + ln(\frac{min(FRD, RRD)}{max(FRD, RRD)}) - ln(\frac{min(FAD, RAD)}{max(FAD, RAD)})}$$
+                    If a mutation has an AS_SOR > <b>{{ maxAS_StrandOddsRatio }}</b>, then it is filtered out of the resulting files and graphs.
+                </p>
+                <hr>
+                <div class="text-center">
+                    <h3 id="results">Results</h3>
+                </div>
+                {% if callingSoftware == "both" %}
+                <h4 id="snvs">Common Identified SNVs</h4>
+                <p>
+                    This step merges the identified SNVs from JACUSA2 and REDItools2 by position and mutation (nucleotide change). If any combination of position and mutation is not found in either of the outputs, it is discarded. Furthermore, these SNVs are filtered by the following values:
+                {% elif callingSoftware == "jacusa" %}
+                <h4 id="snvs">Identified SNVs</h4>
+                <p>
+                    This step takes the SNVs identified by JACUSA2, and filters them by the following values:
+                {% elif callingSoftware == "reditools" %}
+                <h4 id="snvs">Identified SNVs</h4>
+                <p>
+                    This step takes the SNVs identified by REDItools2, and filters them by the following values:
+                {% endif %}
+                    <ul>
+                        <li>Minimum base quality: {{ callingBaseMinQuality }}</li>
+                        <li>Minimum read quality: {{ callingReadMinQuality }}</li>
+                        <li>Minimum SNV coverage: {{ minSNVCoverage }}</li>
+                        <li>Minimum main read support: {{ minMainReadSupport }}</li>
+                        <li>Minimum SNV frequency: {{ minFrequency }}</li>
+                    </ul>
+
+                    If there is a position that has multiple mutations, these are split into a row per mutation per position. 
+                </p>
+                <p>
+                    These files were stored at <a href="6-visualization/csv/globalCommon.csv">6-visualization/csv/globalCommon.csv</a> for the global results among all samples, and <a href="6-visualization/">6-visualization/SAMPLE_NAME/csv/runCommon.csv</a> for the results of each sample. {% if callingSoftware == "both" %} There is also a file for the global results and for each sample of the results by JACUSA2 (<a href="6-visualization">6-visualization/REFERENCE_NAME/csv/globalJacusa.csv</a> and <a href="6-visualization/">6-visualization/REFERENCE_NAME/SAMPLE_NAME/csv/jacusa.csv</a>) and REDItools2 (<a href="6-visualization/">6-visualization/csv/globalReditools.csv</a> and <a href="6-visualization/">6-visualization/SAMPLE_NAME/csv/reditools.csv</a>).{% endif %} Here is a sample from the global results file.
+                </p>
+                <div class="overflow-auto" style="max-height: 500px">
+                    <table class="table w-100">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="single-line">
+                                    CHROM
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Reference chromosome or segment">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    Position
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Number of position in chromosome or segment">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    Alt
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Alternative allele">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    Reference
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Reference allele">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    Type
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Mutation change type">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    AAVar
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Amino acid variation with the standard format p.Aaa#Bbb for simple substitutions. 'p.' means that the variation is at a protein level. Aaa and Bbb are the short names of the amino acid. # is the position of the amino acid in the protein sequence. For more information, please check the HGVS nomenclature documentation.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    GeneName
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Name (or symbol) for the gene where the mutation is located.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    GeneID
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="ID (or locus) for the gene where the mutation is located.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    RefReads
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Number of reads with the reference allele">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    AltReads
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Number of reads with the current row's alternate allele{{ ' found in REDItools2 results' if callingSoftware == 'both' else '' }}.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    TotalReads
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Total number of reads containing the position{{ ' found in REDItools2 results' if callingSoftware == 'both' else '' }}.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    Frequency
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Frequency of the row's alternate allele{{ ' found in REDItools2 results' if callingSoftware == 'both' else '' }}. Frequency = Alt / TotalReads.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    A
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Number of reads with nucleotide A{{ ' found in REDItools2 results' if callingSoftware == 'both' else '' }}.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    C
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Number of reads with nucleotide C{{ ' found in REDItools2 results' if callingSoftware == 'both' else '' }}.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    G
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Number of reads with nucleotide G{{ ' found in REDItools2 results' if callingSoftware == 'both' else '' }}.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    T
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Number of reads with nucleotide T{{ ' found in REDItools2 results' if callingSoftware == 'both' else '' }}.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                {% if callingSoftware == "both" %}
+                                <th scope="col" class="single-line">
+                                    JacRefReads
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Number of reads with the reference allele found in JACUSA2 results.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    JacAltReads
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Number of reads with the current row's alternate allele found in JACUSA2 results.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    JacTotalReads
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Total number of reads containing the position found in JACUSA2 results.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    JacFrequency
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Frequency of the row's alternate allele found in JACUSA2 results. Frequency = Alt / TotalReads.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    JacA
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Number of reads with nucleotide A found in JACUSA2 results.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    JacC
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Number of reads with nucleotide C found in JACUSA2 results.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    JacG
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Number of reads with nucleotide G found in JACUSA2 results.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    JacT
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Number of reads with nucleotide T found in JACUSA2 results.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" class="single-line">
+                                    Sample
+                                    <button type="button" class="btn btn-link" data-bs-toggle="tooltip" data-bs-placement="top" title="Sample name. Only found in the global results.">
+                                    <i class="fa-solid fa-circle-question white-icon"></i>
+                                    </button>
+                                </th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for index, row in df.iterrows() %}
+                                <tr>
+                                    {% for value in row %}
+                                        <td>{{ value }}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <br>
+                {% if figGenerateMutationCountBarPlotsPerRun == "on" or figGenerateGlobalMutationCountBarPlots == "on" %}
+                <h4 id="mutationcountbar">Mutation Count Bar Plot</h4>
+                <p>
+                    Each {% if figGenerateMutationCountBarPlotsPerRun == "on" %}sample has its own mutation count bar plot{% if figGenerateGlobalMutationCountBarPlots == "on" %}, as well as each {% endif %}{% endif %}{% if figGenerateGlobalMutationCountBarPlots == "on" %}reference pathogen genome has its own global mutation count bar plot{% endif %}. For each possible mutation, it counts how many times the mutation happened among all reads, regardless of the position, and plots it as a bar. It also displays the mean coverage and median coverage, where the coverage is the number of reads with alternate allele. These graphs were stored at {% if figGenerateGlobalMutationCountBarPlots == "on" %}<a href="6-visualization/">6-visualization/REFERENCE_NAME/graphs/common.mutationCountBarPlot.png</a> for each reference genome graph{% if figGenerateMutationCountBarPlotsPerRun == "on" %}, or {% endif %}{% endif %}{% if figGenerateMutationCountBarPlotsPerRun == "on" %}<a href="6-visualization/">6-visualization/REFERENCE_NAME/SAMPLE_NAME/graphs/common.mutationCountBarPlot.png</a> for each sample{% endif %}.
+                </p>
+                <div class="text-center">
+                    <img src="{{ mutationCountBarPlot }}" class="image">
+                </div>
+                <br>
+                {% endif %}
+                {% if figGenerateMutationCountBoxPlotsPerRun == "on" or figGenerateGlobalMutationCountBoxPlots == "on" %}
+                <h4 id="mutationcountbox">Mutation Count Box Plot</h4>
+                <p>
+                    Each {% if figGenerateMutationCountBoxPlotsPerRun == "on" %}sample has its own mutation count box plot{% if figGenerateGlobalMutationCountBoxPlots == "on" %}, as well as each {% endif %}{% endif %}{% if figGenerateGlobalMutationCountBoxPlots == "on" %}reference pathogen genome has its own global mutation count box plot{% endif %}. For each possible mutation, it plots the box plot regardless of the position. It is possible to have many outliers, hence the graph can look like a dot plot with a small box in the bottom side. These graphs were stored at {% if figGenerateGlobalMutationCountBoxPlots == "on" %}<a href="6-visualization/">6-visualization/REFERENCE_NAME/graphs/common.mutationCountBoxPlot.png</a> for each reference genome graph{% if figGenerateMutationCountBoxPlotsPerRun == "on" %}, or {% endif %}{% endif %}{% if figGenerateMutationCountBoxPlotsPerRun == "on" %}<a href="6-visualization/">6-visualization/REFERENCE_NAME/SAMPLE_NAME/graphs/common.mutationCountBoxPlot.png</a> for each sample{% endif %}.
+                </p>
+                <div class="text-center">
+                    <img src="{{ mutationCountBoxPlot }}" class="image">
+                </div>
+                <br>
+                {% endif %}
+                {% if figGenerateMutationCountPerGeneBarPlotPerRun == "on" or figGenerateGlobalMutationCountPerGeneBarPlots == "on" %}
+                <h4 id="genemutationbar">Mutation Count Stacked Bar Plot Per Gene</h4>
+                <p>
+                    Each {% if figGenerateMutationCountPerGeneBarPlotPerRun == "on" %}sample has its own mutation count stacked bar plot per gene{% if figGenerateGlobalMutationCountPerGeneBarPlots == "on" %}, as well as each {% endif %}{% endif %}{% if figGenerateGlobalMutationCountPerGeneBarPlots == "on" %}reference pathogen genome has its own global mutation count stacked bar plot per gene{% endif %}. For each gene, it plots a stacked bar, split by each possible mutation, where the length of each bar section is given by the number of reads that mutation has in that gene. It is possible that there are multiple graphs for each sample or reference pathogen. This is because it plots at most <strong>{{ figBarPlotPerGeneNumber }}</strong> genes per file, each file representing a group number. The genes are displayed ordered as they appear in the genome. These graphs were stored at {% if figGenerateGlobalMutationCountPerGeneBarPlots == "on" %}<a href="6-visualization/">6-visualization/REFERENCE_NAME/graphs/geneBarPlot</a> for each reference genome graph{% if figGenerateMutationCountPerGeneBarPlotPerRun == "on" %}, or {% endif %}{% endif %}{% if figGenerateMutationCountPerGeneBarPlotPerRun == "on" %}<a href="6-visualization/">6-visualization/REFERENCE_NAME/SAMPLE_NAME/graphs/geneBarPlot</a> for each sample{% endif %}. There is also a file named <code>_groups.txt</code> where it says the group number of each gene. 
+                </p>
+                <div class="text-center">
+                    <img src="{{ geneMutationCountBarPlot }}" class="image">
+                </div>
+                <br>
+                {% endif %}
+                {% if figGenerateMutationCountPerGeneBoxPlotPerRun == "on" or figGenerateGlobalMutationCountPerGeneBoxPlots == "on" %}
+                <h4 id="genemutationbox">Mutation Count Box Plot Per Gene</h4>
+                <p>
+                    Each {% if figGenerateMutationCountPerGeneBoxPlotPerRun == "on" %}sample has its own mutation count box plot per gene{% if figGenerateGlobalMutationCountPerGeneBoxPlots == "on" %}, as well as each {% endif %}{% endif %}{% if figGenerateGlobalMutationCountPerGeneBoxPlots == "on" %}reference pathogen genome has its own global mutation count box plot per gene{% endif %}. For each gene, it plots a box plot based on the number of mutated reads in that gene across all the different positions. Some box plots might have many outliers, so they can look like dot plots with a small box in the left side. It is possible that there are multiple graphs for each sample or reference pathogen. This is because it plots at most <strong>{{ figBarPlotPerGeneNumber }}</strong> genes per file, each file representing a group number. The genes are displayed ordered as they appear in the genome. These graphs were stored at {% if figGenerateGlobalMutationCountPerGeneBoxPlots == "on" %}<a href="6-visualization/">6-visualization/REFERENCE_NAME/graphs/geneBoxPlot</a> for each reference genome graph{% if figGenerateMutationCountPerGeneBoxPlotPerRun == "on" %}, or {% endif %}{% endif %}{% if figGenerateMutationCountPerGeneBoxPlotPerRun == "on" %}<a href="6-visualization/">6-visualization/REFERENCE_NAME/SAMPLE_NAME/graphs/geneBoxPlot</a> for each sample{% endif %}. There is also a file named <code>_groups.txt</code> where it says the group number of each gene. 
+                </p>
+                <div class="text-center">
+                    <img src="{{ geneMutationCountBoxPlot }}" class="image">
+                </div>
+                <br>
+                {% endif %}
+                {% if figGenerateGlobalMutationCountPerRunBarPlots == "on"%}
+                <h4 id="runmutationbar">Mutation Count Per Sample Bar Plot</h4>
+                <p>
+                    Each reference pathogen genome has its own global mutation count per sample bar plot. For each possible mutation, it counts how many times the mutation happened among all reads in each sample, regardless of the position, and plots it as a bar. Each sample has its own bar. These graphs were stored at <a href="6-visualization/">6-visualization/REFERENCE_NAME/graphs/common.mutationsPerRunCountBarPlot.png</a> for each reference genome graph.
+                </p>
+                <div class="text-center">
+                    <img src="{{ mutationCountPerRunBarPlot }}" class="image">
+                </div>
+                <br>
+                {% endif %}
+                {% if figGenerateGlobalMutationCountPerRunBoxPlots == "on"%}
+                <h4 id="samplemutationbox">Mutation Count Per Sample Box Plot</h4>
+                <p>
+                    Each reference pathogen genome has its own global mutation count per sample bar plot. For each sample, it plots a box plot based on the number of mutated reads in that sample across all the different positions. Some box plots might have many outliers, so they can look like dot plots with a small box in the left side. These graphs were stored at <a href="6-visualization/">6-visualization/REFERENCE_NAME/graphs/common.mutationsPerRunCountBoxPlot.png</a> for each reference genome graph.
+                </p>
+                <div class="text-center">
+                    <img src="{{ mutationCountPerRunBoxPlot }}" class="image">
+                </div>
+                <br>
+                {% endif %}
+                {% if figGenerateGlobalFrequencyPerMutationStripPlots == "on"%}
+                <h4 id="mutationfrequency">Frequency Per Mutation Strip Plot</h4>
+                <p>
+                    Each reference pathogen genome has its own frequency per mnutation strip plot. It plots a strip plot, where each dot is the frequency of an SNV, and it appears in the strip of their respective mutation. These graphs were stored at <a href="6-visualization/">6-visualization/REFERENCE_NAME/graphs/common.frequencyPerMutation.png</a> for each reference genome graph.
+                </p>
+                <div class="text-center">
+                    <img src="{{ frequencyPerMutationPlot }}" class="image">
+                </div>
+                <br>
+                {% endif %}
+                {% if figGenerateGlobalFrequencyPerGeneStripPlots == "on"%}
+                <h4 id="genefrequency">Frequency Per Gene Strip Plot</h4>
+                <p>
+                    Each reference pathogen genome has its own frequency per gene strip plot. It plots a strip plot, where each dot is the frequency of an SNV, and it appears in the strip of their respective gene. It is possible that there are multiple graphs for each sample or reference pathogen. This is because it plots at most <strong>{{ figStripPlotPerGeneNumber }}</strong> genes per file, each file representing a group number. The genes are displayed ordered as they appear in the genome. These graphs were stored at <a href="6-visualization/">6-visualization/REFERENCE_NAME/graphs/common.frequencyPerMutation.png</a> for each reference genome graph. There is also a file named <code>_groups.txt</code> where it says the group number of each gene. 
+                </p>
+                <div class="text-center">
+                    <img src="{{ frequencyPerGenePlot }}" class="image">
+                </div>
+                <br>
+                {% endif %}
+                {% if figGenerateGlobalFrequencyPerRunStripPlots == "on"%}
+                <h4 id="samplefrequency">Frequency Per Sample Strip Plot</h4>
+                <p>
+                    Each reference pathogen genome has its own frequency per sample strip plot. It plots a strip plot, where each dot is the frequency of an SNV, and it appears in the strip of their respective sample. These graphs were stored at <a href="6-visualization/">6-visualization/REFERENCE_NAME/graphs/common.frequencyPerRun.png</a> for each reference genome graph.
+                </p>
+                <div class="text-center">
+                    <img src="{{ frequencyPerRunPlot }}" class="image">
+                </div>
+                <br>
+                {% endif %}
+                {% if figGenerateGlobalDistributionHistogramsPlots == "on"%}
+                <h4 id="samplefrequency">Distribution Histograms Plot</h4>
+                <p>
+                    Each reference pathogen genome has its own distribution histograms plots. It plots six graphs in one file per chromosome/segment, where each graph represents a mutation (top half) and its reverse complement (bottom half). Each graph has a histogram displaying the number of SNVs of that mutation found each {{ figDistributionBinSize }} nucleotides with respect to the reference genome. These graphs were stored at <a href="6-visualization/">6-visualization/REFERENCE_NAME/graphs/CHROMOSOME_histogram.png</a> for each chromosome/segment in each reference genome.
+                </p>
+                <div class="text-center">
+                    <img src="{{ histogramPlot }}" class="image">
+                </div>
+                <br>
+                {% endif %}
+                {% if figGenerateGlobalRegressionPlots == "on"%}
+                <h4 id="samplefrequency">Regression Plot</h4>
+                <p>
+                    Each reference pathogen genome has its own regression plots. It displays a dot plot of mutated (or alternate) reads vs the total reads per position. If it finds a suitable linear function, then it is also plotted. These graphs were stored at <a href="6-visualization/">6-visualization/REFERENCE_NAME/graphs/CHROMOSOME.regression.png</a> for each chromosome/segment in each reference genome.
+                </p>
+                <div class="text-center">
+                    <img src="{{ regressionPlot }}" class="image">
+                </div>
+                <br>
+                {% endif %}
+                {% if figGenerateGlobalPresencePerRunPerPositionGraphs == "on"%}
+                <h4 id="presence">Presence Per Run Position Plot</h4>
+                <p>
+                    Each reference pathogen genome has its own presence per run position plots as a {% if figPositionGraph == "circos" or figPositionGraph == "both" %}circos graph{% if figPositionGraph == "both" %} and a heatmap{% endif %}{% endif %}{% if figPositionGraph == "heatmap" %}heatmap{% endif %}. 
+                </p>
+                {% if figPositionGraph == "circos" or figPositionGraph == "both" %}
+                <p>
+                    The circos graph is a circular graph that displays a different position each arc, up to <strong>{{ figPositionsPerCircos }}</strong> positions, while each concentric strip at each radius level displays a different run, creating cells. The circos graph supports up to 20 samples. If a cell is colored, then it means that the corresponding position was mutated in that sample. If the graph contains multiple genes, the genes range will be displayed in the innermost circle strip. Because there is a limit on the positions that each circos graph can display, it is possible that there are multiple graphs for each sample or reference pathogen. Genes that have less than <strong>{{ figPositionsPerCircos }}</strong> mutated positions will be grouped with other genes that also have less than that number of mutated positions. If a gene has more than <strong>{{ figPositionsPerCircos }}</strong> mutated positions, it will be split in different files. These graphs were stored at <a href="6-visualization/">6-visualization/REFERENCE_NAME/graphs/circos/CHROMOSOME_GROUP.png</a> for each group in each chromosome/segment per reference genome, or <a href="6-visualization/">6-visualization/REFERENCE_NAME/graphs/circos/GENE_GROUP.png</a> for each group in each gene per reference genome.
+                </p>
+                <div class="text-center">
+                    <img src="{{ circosPlot }}" class="image">
+                </div>
+                <br>
+                {% endif %}
+                {% if figPositionGraph == "heatmap" or figPositionGraph == "both" %}
+                <p>
+                    The heatmap is a tabular graph where each column represents a sample, and each row represents a position in the reference chromosome/segment. Each heatmap can have up to <strong>{{ figPositionsPerHeatmap }}</strong> positions. If a cell is colored, then it means that the corresponding position was mutated in that sample. If the graph contains multiple genes, the genes range will be displayed to the right of the heatmap. Because there is a limit on the positions that each heatmap can display, it is possible that there are multiple graphs for each reference pathogen. Genes that have less than <strong>{{ figPositionsPerHeatmap }}</strong> mutated positions will be grouped with other genes that also have less than that number of mutated positions. If a gene has more than <strong>{{ figPositionsPerHeatmap }}</strong> mutated positions, it will be split in different files. These graphs were stored at <a href="6-visualization/">6-visualization/REFERENCE_NAME/graphs/heatmap/CHROMOSOME_GROUP.png</a> for each group in each chromosome/segment per reference genome, or <a href="6-visualization/">6-visualization/REFERENCE_NAME/graphs/heatmap/GENE_GROUP.png</a> for each group in each gene per reference genome.
+                </p>
+                <div class="text-center">
+                    <img src="{{ heatmapPlot }}" class="image">
+                </div>
+                <br>
+                {% endif %}
+                {% endif %}
+                {% if figGenerateFrequencyPerMutationPerPositionGraphsPerRun == "on"%}
+                <h4 id="frequencymutationposition">Frequency Per Mutation Position Plot</h4>
+                <p>
+                    Each sample has its own frequency per mutation position plots as a {% if figPositionGraph == "circos" or figPositionGraph == "both" %}circos graph{% if figPositionGraph == "both" %} and a heatmap{% endif %}{% endif %}{% if figPositionGraph == "heatmap" %}heatmap{% endif %}. 
+                </p>
+                {% if figPositionGraph == "circos" or figPositionGraph == "both" %}
+                <p>
+                    The circos graph is a circular graph that displays a different position each arc, up to <strong>{{ figPositionsPerCircos }}</strong> positions, while each concentric strip at each radius level displays a different mutation, creating cells. If a cell is colored, then it means that the corresponding position had that type of mutation, while the intensity of the color represents the frequency of that position-mutation. If the graph contains multiple genes, the genes range will be displayed in the innermost circle strip. Because there is a limit on the positions that each circos graph can display, it is possible that there are multiple graphs for each sample. Genes that have less than <strong>{{ figPositionsPerCircos }}</strong> mutated positions will be grouped with other genes that also have less than that number of mutated positions. If a gene has more than <strong>{{ figPositionsPerCircos }}</strong> mutated positions, it will be split in different files. These graphs were stored at <a href="6-visualization/">6-visualization/REFERENCE_NAME/SAMPLE_NAME/circos/CHROMOSOME_GROUP.png</a> for each group in each chromosome/segment per sample, or <a href="6-visualization/">6-visualization/REFERENCE_NAME/SAMPLE_NAME/graphs/circos/GENE_GROUP.png</a> for each group in each gene per sample.
+                </p>
+                <div class="text-center">
+                    <img src="{{ circosPerRunPlot }}" class="image">
+                </div>
+                <br>
+                {% endif %}
+                {% if figPositionGraph == "heatmap" or figPositionGraph == "both" %}
+                <p>
+                    The heatmap is a tabular graph where each column represents a sample, and each row represents a position in the reference chromosome/segment. Each heatmap can have up to <strong>{{ figPositionsPerHeatmap }}</strong> positions. If a cell is colored, then it means that the corresponding position had that type of mutation, while the intensity of the color represents the frequency of that position-mutation. If the graph contains multiple genes, the genes range will be displayed to the right of the heatmap. Because there is a limit on the positions that each heatmap can display, it is possible that there are multiple graphs for each sample or reference pathogen. Genes that have less than <strong>{{ figPositionsPerHeatmap }}</strong> mutated positions will be grouped with other genes that also have less than that number of mutated positions. If a gene has more than <strong>{{ figPositionsPerHeatmap }}</strong> mutated positions, it will be split in different files. These graphs were stored at <a href="6-visualization/">6-visualization/REFERENCE_NAME/SAMPLE_NAME/graphs/heatmap/CHROMOSOME_GROUP.png</a> for each group in each chromosome/segment per sample, or <a href="6-visualization/">6-visualization/REFERENCE_NAME/SAMPLE_NAME/graphs/heatmap/GENE_GROUP.png</a> for each group in each gene per sample.
+                </p>
+                <div class="text-center">
+                    <img src="{{ heatmapPerRunPlot }}" class="image">
+                </div>
+                <br>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>  
+</body>
+</html>

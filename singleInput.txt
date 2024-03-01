@@ -1,0 +1,2 @@
+Run     ID  File
+SRR11059940 B   940.fastq

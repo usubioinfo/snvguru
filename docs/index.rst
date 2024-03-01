@@ -1,21 +1,37 @@
-# SNVGuru
+.. SNVGuru documentation master file, created by
+   sphinx-quickstart on Mon Apr 17 02:40:56 2023.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+Welcome to SNVGuru's documentation!
+=======================================
+
+============
+Introduction
+============
 
 SNVGuru is an RNA-seq analysis tool made in Python that downloads and filters high-quality reads, discarding reads that align with a host genome, and it calls and analyzes the single nucleotide variants found. It supports multiple aligning tools, and uses JACUSA, REDItools2 and SnpEff for calling the SNVs. At the end, you will get an HTML report with the basic parameters used and the explanation of every generated figure.
 
-## How to install?
+===============
+How to install?
+===============
 
 * Download SNVGuru from GitHub running `git clone <URL>`.
 * Run `cd snvguru`.
-* Run `conda env create -f pipeline_environment.yml`. Be aware that you must have Miniconda or Anaconda installed (see [How to install Miniconda?](#how-to-install-miniconda)).
+* Run `conda env create -f pipeline_environment.yml`. Be aware that you must have Miniconda or Anaconda installed (see :ref:`miniconda-installation`).
 * Run `pip install -r requirements.txt`.
 * SNVGuru can install the required tools for you. For that, run `python3 src/main.py -d`. This is only needed the first time. These tools will be located in the `tools` folder.
 
-## How to run?
+===========
+How to run?
+===========
 
 For running SNVGuru, the command is `python3 src/main.py`. It can read the configuration (including the input files) from the `config/main.config` file, or you can use the multiple arguments to customize your execution. Use `python3 src/main.py -h` for a description of all available arguments.
 
-## How to configure?
-
+=================
+How to configure?
+=================
+  
 In the configuration folder (`config/` or your folder of choice using the `-c` argument) you will find 12 different `.config` files. 11 of these are for the tool the name refers to, and, in general, you will not have to modify these, unless you are using Minimap2 or DNA sequences with Magic-BLAST. For example, `bwa.config` is for BWA. The most important configuration file, and the one you might want to check and modify to suit your needs, is `main.config`. The most important parameters you might want to configure here are `source`, `inputType` (if `source` is `file`), `inputFastqDir` (if `source` is `file`), `workPath`, `hostReferencePath`, `pathogenReferenceGenomePaths`, `pathogenReferenceProteinPaths`, `pathogenReferenceGenesPaths`, `alignmentSoftwareHost` (if you want to eliminate the host-contaminated reads first) and `alignmentSoftwarePathogen`.
 
 * `source` (`-s`): It can be 'project', 'file' or 'sra'.
@@ -44,14 +60,33 @@ In the configuration folder (`config/` or your folder of choice using the `-c` a
       * `gmap`: GMAP is suggested for long cDNA reads.
       * `magicblast`: Magic-BLAST can be used for any type of read. 
 
-## Do you have a sample report? How to interpret the figures?
 
-You can check <a href="https://bioinfo.usu.edu/snvguru/influenzaA/analysis_report.html" target="_blank">this sample report</a> for *influenza A*, or <a href="https://bioinfo.usu.edu/snvguru/mtuberculosis/analysis_report.html" target="_blank">this one</a> for *Mycobacterium tuberculosis*, or <a href="https://bioinfo.usu.edu/snvguru/hcapsulatum/analysis_report.html" target="_blank">this other one</a> for *Histoplasma capsulatum*. 
+==========================================================
+Do you have a sample report? How to interpret the figures?
+==========================================================
 
-## How to install Miniconda?
+You can check `this sample report <influenzaA/analysis_report.html>`_ for *influenza A*, or `this one <mtuberculosis/analysis_report.html>`_ for *Mycobacterium tuberculosis*, or `this other one <hcapsulatum/analysis_report.html>`_ for *Histoplasma capsulatum*. 
+
+.. _miniconda-installation:
+
+=========================
+How to install Miniconda?
+=========================
 
 * Download the installer from https://docs.conda.io/en/latest/miniconda.html#linux-installers.
 * Run `bash Miniconda3-latest-Linux-x86_64.sh`. The filename can change.
-* Accept all the default configuration (unless you know what you are doing).
-* Close and reopen the terminal (or, alternatively, run `source ~/.bashrc` if you are on bash, `source ~/.zshrc` if you are on zsh, or `source ~/.config/fish/config.fish` if you are on fish).
+* Accept all the default configuration.
+* Close and reopen the terminal window.
 * You can test that it is installed by running `conda list`. It should display a list of installed packages.
+
+.. toctree::
+   :maxdepth: 3
+   :caption: Contents:
+
+   modules
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`

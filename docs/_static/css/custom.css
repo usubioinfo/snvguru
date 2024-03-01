@@ -1,0 +1,13 @@
+cite {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f4f4f4;
+    font-family: 'Courier New', monospace;
+    display: inline-block;
+    padding: 0.2em 0.4em;
+    font-style: normal;
+}
+
+dt {
+    font-weight: normal !important;
+}

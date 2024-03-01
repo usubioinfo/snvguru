@@ -129,5 +129,15 @@ dmypy.json
 .pyre/
 
 tools/
-test/
-interactive.sh
+hcapsulatum/
+influenzaA/
+mtuberculosis/
+pipelineEnv/
+docs/_build/
+sampleData/
+src/snpEff*
+src/slurm*
+snpEff.config
+*.out
+./*.sh
+epost.dtd
