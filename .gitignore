@@ -139,5 +139,5 @@ src/snpEff*
 src/slurm*
 snpEff.config
 *.out
-./*.sh
+*.sh
 epost.dtd
