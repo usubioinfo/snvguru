@@ -141,3 +141,4 @@ snpEff.config
 *.out
 *.sh
 epost.dtd
+*.zip
