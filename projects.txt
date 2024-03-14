@@ -1,4 +1,4 @@
 ProjectName
 #PRJDB4485 # Influenza A
-#PRJNA214093 # Histoplasma capsulatum
-PRJNA1010683 # Mycobacterium tuberculosis
+PRJNA214093 # Histoplasma capsulatum
+#PRJNA1010683 # Mycobacterium tuberculosis
