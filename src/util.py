@@ -6,6 +6,7 @@ import subprocess
 import logger
 import sys
 import config
+from Bio import SeqIO
 import re
 from waiting import wait
 
@@ -137,3 +138,106 @@ def execCmd(cmd, file=None, mode="w"):
             log.error(errString)
             stopProgram()
         return outString, errString
+
+def _get_fasta_ids(fasta_file):
+    """Extracts chromosome IDs from the FASTA headers."""
+    return {rec.id for rec in SeqIO.parse(fasta_file, "fasta")}
+
+def _fix_genbank(fasta_ids, gbk_in, gbk_out):
+    """
+    Sync GenBank LOCUS names to match FASTA headers.
+
+    Rules:
+      * If FASTA headers include version numbers (e.g. 'NC_000001.11') and LOCUS does not,
+        append version to LOCUS.
+      * If FASTA headers omit version numbers (e.g. 'NC_000001') and LOCUS includes them,
+        strip version from LOCUS.
+    """
+    # Detect whether FASTA IDs use version numbers
+    has_version_in_fasta = any(re.search(r"\.\d+$", fid) for fid in fasta_ids)
+
+    out_records = []
+    for rec in SeqIO.parse(gbk_in, "genbank"):
+        locus = rec.name or ""                      # LOCUS comes in as record.name
+        locus_has_version = bool(re.search(r"\.\d+$", locus))
+
+        if has_version_in_fasta and not locus_has_version:
+            # prefer explicit accession + sequence_version from annotations
+            acc = None
+            if rec.annotations.get("accessions"):
+                acc = rec.annotations["accessions"][0]
+            seqver = rec.annotations.get("sequence_version")
+
+            if acc and seqver is not None:
+                new_locus = f"{acc}.{seqver}"
+            elif re.search(r"\.\d+$", rec.id):
+                # fallback: use record.id if it already contains a version
+                new_locus = rec.id
+            else:
+                # nothing reliable to append — keep existing locus
+                new_locus = locus
+
+            if new_locus and new_locus != locus:
+                rec.name = new_locus
+
+        elif (not has_version_in_fasta) and locus_has_version:
+            rec.name = re.sub(r"\.\d+$", "", locus)
+
+        out_records.append(rec)
+
+    SeqIO.write(out_records, gbk_out, "genbank")
+
+def _fix_gff_or_gtf_fast(fasta_ids, ann_in, ann_out):
+    """
+    Rewrite GFF/GTF seqid column to match FASTA headers.
+    fasta_ids: set of FASTA headers
+    """
+    # Build mapping: base ID (no version) -> canonical FASTA ID
+    fasta_map = {}
+    for fid in fasta_ids:
+        base = fid.split(".")[0]
+        fasta_map[base] = fid
+
+    with open(ann_in) as f_in, open(ann_out, "w") as f_out:
+        for line in f_in:
+            if line.startswith("#"):
+                f_out.write(line)
+                continue
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) < 9:
+                f_out.write(line)
+                continue
+
+            seqid = parts[0]
+            base_seqid = seqid.split(".")[0]
+
+            if base_seqid in fasta_map:
+                parts[0] = fasta_map[base_seqid]
+            else:
+                # Optional: warn user about unmatched seqid
+                print(f"Warning: seqid '{seqid}' not found in FASTA headers. Keeping original.")
+
+            f_out.write("\t".join(parts) + "\n")
+
+def sync_annotation_to_fasta(fasta_file, annotation_file, output_file):
+    """
+    Synchronize an annotation file with a reference FASTA so that sequence IDs match.
+
+    Args:
+        fasta_file (str): Path to the reference genome FASTA file. The chromosome IDs in this
+                        file are treated as canonical.
+        annotation_file (str): Path to the annotation file. Supported formats are GenBank (.gb, .gbk),
+                            GFF/GFF3 (.gff, .gff3), or GTF (.gtf).
+        output_file (str): Path where the corrected annotation file will be written.
+    """
+    fasta_ids = _get_fasta_ids(fasta_file)
+    ext = os.path.splitext(annotation_file)[1].lower()
+
+    if ext in [".gb", ".gbk"]:
+        _fix_genbank(fasta_ids, annotation_file, output_file)
+    elif ext in [".gff", ".gff3", ".gtf"]:
+        _fix_gff_or_gtf(fasta_ids, annotation_file, output_file)
+    elif ext == ".refSeq":
+        execCmd(f"cp {annotation_file} {output_file}")
+    else:
+        raise ValueError(f"Unsupported annotation format: {annotation_file}")

@@ -12,7 +12,6 @@ from Bio import Entrez
 
 Entrez.email = "dummy@dummy.com"
 
-# log = util.getLogger()
 log = logger.logger
 
 def getExperimentsList():

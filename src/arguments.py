@@ -153,16 +153,20 @@ def parseArgs():
         else:
             path = f"{config.workPath}/data/{ref}/genome.fa"
             if not os.path.isfile(path):
-                util.execCmd(f"cp {genome} {config.workPath}/data/{ref}/genome.fa")
-            config.pathogenReferenceGenomePaths.append(f"{config.workPath}/data/{ref}/genome.fa")
+                util.execCmd(f"cp {genome} {path}")
+            config.pathogenReferenceGenomePaths.append(path)
         if not os.path.isfile(genes):
             log.info(f"The genes file {refFile} was not found.")
             util.stopProgram()
         else:
             path = f"{config.workPath}/data/{ref}/genes.{genesExtension}"
             if not os.path.isfile(path):
-                util.execCmd(f"cp {genes} {config.workPath}/data/{ref}/genes.{genesExtension}")
-            config.pathogenReferenceGenesPaths.append(f"{config.workPath}/data/{ref}/genes.{genesExtension}")
+                genome = f"{config.workPath}/data/{ref}/genome.fa"
+                genes_original = f"{config.workPath}/data/{ref}/genes_original.{genesExtension}"
+                util.execCmd(f"cp {genes} {genes_original}")
+                util.sync_annotation_to_fasta(genome, genes_original, path)
+                util.execCmd(f"rm {genes_original}")
+            config.pathogenReferenceGenesPaths.append(path)
         if not os.path.isfile(protein):
             refFile = protein.split("/")[-1]
             log.info(f"The protein file {refFile} was not found.")
@@ -170,8 +174,8 @@ def parseArgs():
         else:
             path = f"{config.workPath}/data/{ref}/protein.fa"
             if not os.path.isfile(path):
-                util.execCmd(f"cp {protein} {config.workPath}/data/{ref}/protein.fa")
-            config.pathogenReferenceProteinPaths.append(f"{config.workPath}/data/{ref}/protein.fa")
+                util.execCmd(f"cp {protein} {path}")
+            config.pathogenReferenceProteinPaths.append(path)
 
     if args.sourceType != None:
         config.source = args.sourceType

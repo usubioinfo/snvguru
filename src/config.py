@@ -127,7 +127,7 @@ def loadConfig(configDir="../config/", stepP=None, resumeFromP=None):
                 global javaPath
                 val = line.split()[1]
                 if val == "None":
-                    javaPath = f"{toolsPath}/jdk-13.0.2/bin/java"
+                    javaPath = f"java"
                 else:
                     javaPath = val
             # SRA toolkit path
@@ -151,7 +151,7 @@ def loadConfig(configDir="../config/", stepP=None, resumeFromP=None):
                 global fastqcPath
                 val = line.split()[1]
                 if val == "None":
-                    fastqcPath = f"{toolsPath}/FastQC/fastqc"
+                    fastqcPath = f"fastqc"
                 else:
                     fastqcPath = val
             # Qualimap
@@ -159,7 +159,7 @@ def loadConfig(configDir="../config/", stepP=None, resumeFromP=None):
                 global qualimapPath
                 val = line.split()[1]
                 if val == "None":
-                    qualimapPath = f"{toolsPath}/qualimap_v2.2.1/qualimap"
+                    qualimapPath = f"qualimap"
                 else:
                     qualimapPath = val
             elif line.startswith("qualimapMaxError"):
@@ -178,9 +178,11 @@ def loadConfig(configDir="../config/", stepP=None, resumeFromP=None):
                 global trimmomaticPath
                 val = line.split()[1]
                 if val == "None":
-                    trimmomaticPath = f"{toolsPath}/Trimmomatic-0.39/trimmomatic-0.39.jar"
+                    trimmomaticPath = f"trimmomatic"
                 else:
                     trimmomaticPath = val
+                    if trimmomaticPath.endswith('.jar'):
+                        trimmomaticPath = f'{javaPath} -jar {trimmomaticPath}'
             elif line.startswith("trimGalorePath"):
                 global trimGalorePath
                 val = line.split()[1]
@@ -264,14 +266,16 @@ def loadConfig(configDir="../config/", stepP=None, resumeFromP=None):
                 global jacusaPath
                 val = line.split()[1]
                 if val == "None":
-                    jacusaPath = f"{toolsPath}/jacusa/JACUSA_v2.0.2-RC.jar"
+                    jacusaPath = f"JACUSA2"
                 else:
                     jacusaPath = val
+                    if jacusaPath.endswith('.jar'):
+                        jacusaPath = f'{javaPath} -jar {jacusaPath}'
             elif line.startswith("reditoolsCommand"):
                 global reditoolsCommand
                 val = shlex.split(line)[1]
                 if val == "None":
-                    reditoolsCommand = f"{toolsPath}/REDItools2/env/bin/python2 {toolsPath}/REDItools2/src/cineca/reditools.py"
+                    reditoolsCommand = f"python {toolsPath}/REDItools2/src/cineca/reditools.py"
                 else:
                     reditoolsCommand = val
             elif line.startswith("callingReadMinQuality"):
@@ -298,11 +302,13 @@ def loadConfig(configDir="../config/", stepP=None, resumeFromP=None):
             # Results
             elif line.startswith("snpEffPath"):
                 global snpEffPath
-                val = line.split()[1]
+                val = line.split()[1].strip()
                 if val == "None":
-                    snpEffPath = f"{toolsPath}/snpEff/snpEff.jar"
-                else:
+                    snpEffPath = f"snpEff"
+                else: 
                     snpEffPath = val
+                    if snpEffPath.endswith('.jar'):
+                        snpEffPath = f'{javaPath} -jar {snpEffPath}'
             elif line.startswith("minSNVCoverage"):
                 global minSNVCoverage
                 val = line.split()[1]
@@ -660,7 +666,7 @@ def loadConfig(configDir="../config/", stepP=None, resumeFromP=None):
                 global hisat2Path
                 val = line.split()[1]
                 if val == "None":
-                    hisat2Path = f"{toolsPath}/hisat2-2.1.0/"
+                    hisat2Path = f""
                 else:
                     hisat2Path = f"{val}/"
             if line.startswith("starPath"):
@@ -847,7 +853,7 @@ def loadConfig(configDir="../config/", stepP=None, resumeFromP=None):
 
     # ALIGNMENT - Minimap2
     with open(f"{configDir}minimap2.config", "r") as f:
-        global minimapIndexH, minimapMappingH, minimapIndexV, minimapMappingV
+        global minimapPresetH, minimapIndexH, minimapMappingH, minimapPresetV, minimapIndexV, minimapMappingV
         line = f.readline()
         while line:
             if line.startswith("#"):

@@ -389,7 +389,7 @@ def runSnpEff(sras):
     util.makeDirectory(snpeffDir)
     reditoolsDir = callingDir + "/calling/reditools"
     jacusaDir = callingDir + "/calling/jacusa"
-    util.execCmd(f"cp {pathlib.Path(config.snpEffPath).parent}/snpEff.config {config.workPath}/")
+    util.execCmd(f"cp ../snpEff.config {config.workPath}/")
     with open(f"{config.workPath}/snpEff.config", "w") as f:
         for fullRef in config.pathogenReferenceGenomePaths:
             path = pathlib.Path(fullRef)
@@ -400,13 +400,13 @@ def runSnpEff(sras):
         util.makeDirectory(f"{snpeffDir}/{ref}")
         path = pathlib.Path(fullRef)
         ref = path.parent.name 
-        util.execCmd(f"{config.javaPath} -jar {config.snpEffPath} build -{genesFormat} -c {config.workPath}/snpEff.config -v {ref}")
+        util.execCmd(f"{config.snpEffPath} build -{genesFormat} -c {config.workPath}/snpEff.config -v {ref}")
         for sra in sras:
             run = sra[2]
             if config.callingSoftware in ["reditools", "both"]:
-                util.runCommand(f"{config.javaPath} -jar {config.snpEffPath} -c {config.workPath}/snpEff.config {ref} {reditoolsDir}/{ref}/{run}.reditools.presnpeff.vcf", outFile=f"{snpeffDir}/{ref}/{run}.snpeff.reditools.vcf", jobs=jobs, jobName="snpeff")
+                util.runCommand(f"{config.snpEffPath} -c {config.workPath}/snpEff.config {ref} {reditoolsDir}/{ref}/{run}.reditools.presnpeff.vcf", outFile=f"{snpeffDir}/{ref}/{run}.snpeff.reditools.vcf", jobs=jobs, jobName="snpeff")
             if config.callingSoftware in ["jacusa", "both"]:
-                util.runCommand(f"{config.javaPath} -jar {config.snpEffPath} -c {config.workPath}/snpEff.config {ref} {jacusaDir}/{ref}/{run}.jacusa.presnpeff.vcf", outFile=f"{snpeffDir}/{ref}/{run}.snpeff.jacusa.vcf", jobs=jobs, jobName="snpeff")
+                util.runCommand(f"{config.snpEffPath} -c {config.workPath}/snpEff.config {ref} {jacusaDir}/{ref}/{run}.jacusa.presnpeff.vcf", outFile=f"{snpeffDir}/{ref}/{run}.snpeff.jacusa.vcf", jobs=jobs, jobName="snpeff")
     util.waitForJobs(jobs)
 
 def _filterMutationCt(row, min):
@@ -1100,7 +1100,7 @@ def _graphFrequencyPerGene(df, ref, source=""):
             ax.margins(0.01, tight=False)
             for j in range(0, len(data.index.unique()), 2):
                 plt.axhspan(j - 0.5, j+0.5, facecolor='0.2', alpha=0.1)
-            ax.legend_.remove()
+            #ax.legend_.remove()
             fig = ax.get_figure()
             fig.tight_layout(pad=0)
             fig.set_size_inches(width, height)
@@ -1627,7 +1627,7 @@ def _graphCircosPresencePerRun(df, ref):
                                 left_on=["CHROM", "GeneName"], right_index=True))
     genePosDf = genePosDf[["GeneName", "GenePos"]].drop_duplicates()
     genePosDf = genePosDf.set_index("GeneName")
-    df = df.set_index(["CHROM", "GeneName"])
+    df = df.set_index(["GeneName"])
     df = df.merge(genePosDf, left_index=True, right_index=True)
     df = df.reset_index()
     dfAggregated = (df.groupby(["CHROM", "Position"])
@@ -2114,9 +2114,11 @@ def _graphHeatmapPresencePerRun(df, ref):
                                 left_on=["CHROM", "GeneName"], right_index=True))
     genePosDf = genePosDf[["GeneName", "GenePos"]].drop_duplicates()
     genePosDf = genePosDf.set_index("GeneName")
-    df = df.set_index(["CHROM", "GeneName"])
+    df = df.set_index("GeneName")
     df = df.merge(genePosDf, left_index=True, right_index=True)
     df = df.reset_index()
+    import sys
+    sys.exit(0)
     dfAggregated = (df.groupby(["CHROM", "Position"])
         .apply(_aggregateByPositionPerRun)
         .reset_index())

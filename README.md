@@ -6,8 +6,8 @@ SNVGuru is an RNA-seq analysis tool made in Python that downloads and filters hi
 
 * Download SNVGuru from GitHub running `git clone <URL>`.
 * Run `cd snvguru`.
-* Run `conda env create -f pipeline_environment.yml`. Be aware that you must have Miniconda or Anaconda installed (see [How to install Miniconda?](#how-to-install-miniconda)).
-* Run `pip install -r requirements.txt`.
+* Run `conda env create -f environment.yml`. Be aware that you must have Mamba (recommended), Miniconda or Anaconda installed (see [How to install Mamba?](#how-to-install-mamba) or [How to install Miniconda?](#how-to-install-miniconda)).
+* Run `./install.sh`.
 * SNVGuru can install the required tools for you. For that, run `python3 src/main.py -d`. This is only needed the first time. These tools will be located in the `tools` folder.
 
 ## How to run?
@@ -47,6 +47,18 @@ In the configuration folder (`config/` or your folder of choice using the `-c` a
 ## Do you have a sample report? How to interpret the figures?
 
 You can check <a href="https://bioinfo.usu.edu/snvguru/influenzaA/analysis_report.html" target="_blank">this sample report</a> for *influenza A*, or <a href="https://bioinfo.usu.edu/snvguru/mtuberculosis/analysis_report.html" target="_blank">this one</a> for *Mycobacterium tuberculosis*, or <a href="https://bioinfo.usu.edu/snvguru/hcapsulatum/analysis_report.html" target="_blank">this other one</a> for *Histoplasma capsulatum*. 
+
+## How to install Mamba?
+
+NOTE: These steps are based on the instructions found on [Mamba's webpage](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) and [Miniforge's GitHub](https://github.com/conda-forge/miniforge). 
+
+* Download the installer running one of these commands:
+  * `curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"`
+  * `wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh""`
+* Run the script with `bash Miniforge3-$(uname)-$(uname -m).sh`. 
+* Accept all the default configuration (unless you know what you are doing).
+* Close and reopen the terminal (or, alternatively, run `source ~/.bashrc` if you are on bash, `source ~/.zshrc` if you are on zsh, or `source ~/.config/fish/config.fish` if you are on fish).
+* You can test that it is installed by running `mamba list`. It should display a list of installed packages.
 
 ## How to install Miniconda?
 

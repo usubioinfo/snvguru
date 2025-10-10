@@ -114,7 +114,7 @@ def runJacusa(sras):
                 log.error(f"Sorted BAM file with the alignment for run with ID {run} against pathogen reference {ref} not found.")
                 util.stopProgram()
             log.info(f"Running SNV calling with JACUSA: {run} vs {ref}...")
-            cmd = f"{config.javaPath} -jar {config.jacusaPath} call-1 -p {config.threads} -r {callingDir}/{ref}/{run}.jacusa.vcf -s -f V{config.jacusa} {bamDir}/{ref}/{f}.bam"
+            cmd = f"{config.jacusaPath} call-1 -p {config.threads} -r {callingDir}/{ref}/{run}.jacusa.vcf -s -f V{config.jacusa} {bamDir}/{ref}/{f}.bam"
             util.runCommand(cmd, jobName="jacusa", jobs=jobs)
     util.waitForJobs(jobs)
     for fullRef in config.pathogenReferenceGenomePaths:
@@ -274,6 +274,7 @@ def _reditoolsToVcf(path, run):
         df = pd.DataFrame(final, columns=['#CHROM', 'POSITION','ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'VARIANT_READ', 'TOTAL_READ', 'FREQUENCY', 'A', 'C', 'G', 'T', 'INFO' ])
         df["ALT"] = df["ALT"].str.split(",")
         df = df.explode(["ALT"])
+        print(df.apply(_calculateFrequencyReditools2, axis=1).head())
         df["FREQUENCY"] = df.apply(_calculateFrequencyReditools2, axis=1)
         df = df.round({"FREQUENCY": 6})
         df["FREQUENCY"] = df["FREQUENCY"] * 100

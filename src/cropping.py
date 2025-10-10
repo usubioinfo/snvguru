@@ -86,9 +86,9 @@ def runTrimmomatic(sras):
         filesString = " and ".join(fileNames)
         log.info(f"Cropping {filesString}...")
         if runType == "single":
-            cmd = f"{config.javaPath} -jar {config.trimmomaticPath} SE {filePaths[0]} {fastqDir}/{runId}.fastq CROP:{config.cropSize}"
+            cmd = f"{config.trimmomaticPath} SE {filePaths[0]} {fastqDir}/{runId}.fastq CROP:{config.cropSize}"
         else:
-            cmd = f"{config.javaPath} -jar {config.trimmomaticPath} PE {filePaths[0]} {filePaths[1]} {fastqDir}/{runId}_1.fastq {fastqDir}/{runId}_1.fastq.unpaired {fastqDir}/{runId}_2.fastq {fastqDir}/{runId}_2.fastq.unpaired CROP:{config.cropSize}"
+            cmd = f"{config.trimmomaticPath} PE {filePaths[0]} {filePaths[1]} {fastqDir}/{runId}_1.fastq {fastqDir}/{runId}_1.fastq.unpaired {fastqDir}/{runId}_2.fastq {fastqDir}/{runId}_2.fastq.unpaired CROP:{config.cropSize}"
         util.runCommand(cmd, jobName="trimmomatic", jobs=jobs)
     util.waitForJobs(jobs)
 
@@ -121,7 +121,7 @@ def runTrimGalore(sras):
             util.runCommand(cmd, jobName="trimgalore", jobs=jobs)
         else:
             cmd = f"{config.trimGalorePath} -o {fastqDir} --paired --hardtrim5 {config.cropSize} {filePaths[0]} {filePaths[1]}"
-            cmd = f"; mv {fastqDir}/{fileStems[0]}.{config.cropSize}bp_5prime.fq {fastqDir}/{runId}_1.fastq"
-            cmd = f"; mv {fastqDir}/{fileStems[1]}.{config.cropSize}bp_5prime.fq {fastqDir}/{runId}_2.fastq"
+            cmd += f"; mv {fastqDir}/{fileStems[0]}.{config.cropSize}bp_5prime.fq {fastqDir}/{runId}_1.fastq"
+            cmd += f"; mv {fastqDir}/{fileStems[1]}.{config.cropSize}bp_5prime.fq {fastqDir}/{runId}_2.fastq"
             util.runCommand(cmd, jobName="trimgalore", jobs=jobs)
     util.waitForJobs(jobs)

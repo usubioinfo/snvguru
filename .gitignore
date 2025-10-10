@@ -135,10 +135,14 @@ mtuberculosis/
 pipelineEnv/
 docs/_build/
 sampleData/
+influenzaA3/
 src/snpEff*
 src/slurm*
 snpEff.config
 *.out
-*.sh
+interactive.sh
 epost.dtd
 *.zip
+# pixi environments
+.pixi/*
+!.pixi/config.toml
