@@ -18,7 +18,7 @@ How to install?
 
 * Download SNVGuru from GitHub running ``git clone https://github.com/usubioinfo/snvguru.git``.
 * Run ``cd snvguru``.
-* Run ``mamba env create -f environment.yml`` (if you have Mamba installed) or ``conda env create -f pipeline_environment.yml`` (if you have Miniconda or Anaconda installed). Be aware that you must have Mamba (recommended), Miniconda or Anaconda installed (see :ref:``mamba-installation`` or :ref:``miniconda-installation``).
+* Run ``mamba env create -f environment.yml`` (if you have Mamba installed) or ``conda env create -f pipeline_environment.yml`` (if you have Miniconda or Anaconda installed). Be aware that you must have Mamba (recommended), Miniconda or Anaconda installed (see :ref:`mamba-installation` or :ref:`miniconda-installation`).
 * Run ``mamba activate snvguru`` or ``conda activate snvguru``.
 * Run ``./install.sh``.
 
