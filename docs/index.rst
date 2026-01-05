@@ -16,50 +16,51 @@ SNVGuru is an RNA-seq analysis tool made in Python that downloads and filters hi
 How to install?
 ===============
 
-* Download SNVGuru from GitHub running `git clone https://github.com/usubioinfo/snvguru.git`.
-* Run `cd snvguru`.
-* Run `mamba env create -f environment.yml` (if you have Mamba installed) or `conda env create -f pipeline_environment.yml` (if you have Miniconda or Anaconda installed). Be aware that you must have Mamba (recommended), Miniconda or Anaconda installed (see :ref:`mamba-installation` or :ref:`miniconda-installation`).
-* Run `./install.sh`.
+* Download SNVGuru from GitHub running ``git clone https://github.com/usubioinfo/snvguru.git``.
+* Run ``cd snvguru``.
+* Run ``mamba env create -f environment.yml`` (if you have Mamba installed) or ``conda env create -f pipeline_environment.yml`` (if you have Miniconda or Anaconda installed). Be aware that you must have Mamba (recommended), Miniconda or Anaconda installed (see :ref:``mamba-installation`` or :ref:``miniconda-installation``).
+* Run ``mamba activate snvguru`` or ``conda activate snvguru``.
+* Run ``./install.sh``.
 
 ===========
 How to run?
 ===========
 
-Make sure the environment is active by running `mamba activate snvguru` (if using Mamba) or `conda activate snvguru` (if using Anaconda or Miniconda).
+Make sure the environment is active by running ``mamba activate snvguru`` (if using Mamba) or ``conda activate snvguru`` (if using Anaconda or Miniconda).
 
-For running SNVGuru, the command is `python3 src/main.py`. It can read the configuration (including the input files) from the `config/main.config` file, or you can use the multiple arguments to customize your execution. Use `python3 src/main.py -h` for a description of all available arguments.
+For running SNVGuru, the command is ``python3 src/main.py``. It can read the configuration (including the input files) from the ``config/main.config`` file, or you can use the multiple arguments to customize your execution. Use ``python3 src/main.py -h`` for a description of all available arguments.
 
 =================
 How to configure?
 =================
   
-In the configuration folder (`config/` or your folder of choice using the `-c` argument) you will find 12 different `.config` files. 11 of these are for the tool the name refers to, and, in general, you will not have to modify these, unless you are using Minimap2 or DNA sequences with Magic-BLAST. For example, `bwa.config` is for BWA. The most important configuration file, and the one you might want to check and modify to suit your needs, is `main.config`. The most important parameters you might want to configure here are `source`, `inputType` (if `source` is `file`), `inputFastqDir` (if `source` is `file`), `workPath`, `hostReferencePath`, `pathogenReferenceGenomePaths`, `pathogenReferenceProteinPaths`, `pathogenReferenceGenesPaths`, `alignmentSoftwareHost` (if you want to eliminate the host-contaminated reads first) and `alignmentSoftwarePathogen`.
+In the configuration folder (``config/`` or your folder of choice using the ``-c`` argument) you will find 12 different ``.config`` files. 11 of these are for the tool the name refers to, and, in general, you will not have to modify these, unless you are using Minimap2 or DNA sequences with Magic-BLAST. For example, ``bwa.config`` is for BWA. The most important configuration file, and the one you might want to check and modify to suit your needs, is ``main.config``. The most important parameters you might want to configure here are ``source``, ``inputType`` (if ``source`` is ``file``), ``inputFastqDir`` (if ``source`` is ``file``), ``workPath``, ``hostReferencePath``, ``pathogenReferenceGenomePaths``, ``pathogenReferenceProteinPaths``, ``pathogenReferenceGenesPaths``, ``alignmentSoftwareHost`` (if you want to eliminate the host-contaminated reads first) and ``alignmentSoftwarePathogen``.
 
-* `source` (`-s`): It can be 'project', 'file' or 'sra'.
-   * `project`: It will read a list of BioProject IDs from `projects.txt`.
-   * `sra`: It will read a list of SRA IDs from sras.txt.
-   * `file`: It will read a a list of files from `singleInput.txt`, `pairedInput.txt` or `mixedInput.txt`, depending on the `inputType` value.
-      * `inputType` (`-it`): It can be either 'single', 'paired' or 'mixed'. Will only work if `source` is `file`. All files read must be located at `inputFastqDir`.
-         * `single`: It will read the files in `singleInput.txt`. It has three columns: Run (the sample long ID), ID (the sample short ID for pipeline use) and File (the file name). All reads must be single end.
-         * `paired`: It will read the files in `pairedInput.txt`. It has four columns: Run (the sample long ID), ID (the sample short ID for pipeline use), and File1 and File2 (the file names of the main and the mate reads). All reads must be paired end.
-         * `mixed`: It will read the files in `mixedInput.txt`. It has five columns: Run (the sample long ID), ID (the sample short ID for pipeline use), Type (either `single` or `paired`) and File1 and File2 (the file names of the main and the mate reads). File2 is not required if the sample is single-end.
-      * `inputFastqDir` (`-if`): Directory where all input FASTQ files from the samples are located. Will only work if `source` is `file`.
-* `workPath` (`-w`): When you download SNVGuru, it will have the value `workspace`, which means that your results will be located at `workspace/`. If you want to run the pipeline with different configurations, you might want to have a different `workPath` for every configuration.
-* `hostReferencePath` (`-hr`): Location of the host reference genome FASTA file.
+* ``source`` (``-s``): It can be 'project', 'file' or 'sra'.
+   * ``project``: It will read a list of BioProject IDs from ``projects.txt``.
+   * ``sra``: It will read a list of SRA IDs from sras.txt.
+   * ``file``: It will read a a list of files from ``singleInput.txt``, ``pairedInput.txt`` or ``mixedInput.txt``, depending on the ``inputType`` value.
+      * ``inputType`` (``-it``): It can be either 'single', 'paired' or 'mixed'. Will only work if ``source`` is ``file``. All files read must be located at ``inputFastqDir``.
+         * ``single``: It will read the files in ``singleInput.txt``. It has three columns: Run (the sample long ID), ID (the sample short ID for pipeline use) and File (the file name). All reads must be single end.
+         * ``paired``: It will read the files in ``pairedInput.txt``. It has four columns: Run (the sample long ID), ID (the sample short ID for pipeline use), and File1 and File2 (the file names of the main and the mate reads). All reads must be paired end.
+         * ``mixed``: It will read the files in ``mixedInput.txt``. It has five columns: Run (the sample long ID), ID (the sample short ID for pipeline use), Type (either ``single`` or ``paired``) and File1 and File2 (the file names of the main and the mate reads). File2 is not required if the sample is single-end.
+      * ``inputFastqDir`` (``-if``): Directory where all input FASTQ files from the samples are located. Will only work if ``source`` is ``file``.
+* ``workPath`` (``-w``): When you download SNVGuru, it will have the value ``workspace``, which means that your results will be located at ``workspace/``. If you want to run the pipeline with different configurations, you might want to have a different ``workPath`` for every configuration.
+* ``hostReferencePath`` (``-hr``): Location of the host reference genome FASTA file.
 * Pathogen reference files: Each pathogen reference has three files needed: The genome FASTA file, the proteome FASTA file and the genes file. If you are running the samples against multiple genomes, make sure that they are input in the same order for the three following parameters. 
-   * `pathogenReferenceGenomePaths` (`-prf`): Location of the pathogen reference genome FASTA files. If you are running the samples against multiple genomes, they must be separated by comma.
-   * `pathogenReferenceProteinPaths` (`-prp`): Location of the pathogen reference proteome FASTA files. If you are running the samples against multiple genomes, they must be separated by comma.
-   * `pathogenReferenceGenesPaths` (`-prg`): Location of the pathogen reference genes file. Accepted formats are GFF (`.gff`, `.gff3`), GTF (`.gtf`), GenBank (`.gbk`, `.gbff`, `.gb`) or RefSeq (`.refseq`).
+   * ``pathogenReferenceGenomePaths`` (``-prf``): Location of the pathogen reference genome FASTA files. If you are running the samples against multiple genomes, they must be separated by comma.
+   * ``pathogenReferenceProteinPaths`` (``-prp``): Location of the pathogen reference proteome FASTA files. If you are running the samples against multiple genomes, they must be separated by comma.
+   * ``pathogenReferenceGenesPaths`` (``-prg``): Location of the pathogen reference genes file. Accepted formats are GFF (``.gff``, ``.gff3``), GTF (``.gtf``), GenBank (``.gbk``, ``.gbff``, ``.gb``) or RefSeq (``.refseq``).
 * Alignment tools: There are two parameters for setting the tools used for the alignment steps:
-   * `alignmentSoftwareHost` (`-ah`): Selected tool for running the alignment against the host.
-   * `alignmentSoftwarePathogen` (`-ap`): Selected tool for running the alignment against the pathogens.
+   * ``alignmentSoftwareHost`` (``-ah``): Selected tool for running the alignment against the host.
+   * ``alignmentSoftwarePathogen`` (``-ap``): Selected tool for running the alignment against the pathogens.
    * These tools can be:
-      * `hisat2`: Hisat2 is suggested for short RNA-seq reads. 
-      * `star`: STAR is suggested for short RNA-seq reads. 
-      * `bwa`: BWA is suggested for short DNA reads.
-      * `minimap2`: Minimap2 is suggested for long DNA or RNA-seq reads. 
-      * `gmap`: GMAP is suggested for long cDNA reads.
-      * `magicblast`: Magic-BLAST can be used for any type of read. 
+      * ``hisat2``: Hisat2 is suggested for short RNA-seq reads. 
+      * ``star``: STAR is suggested for short RNA-seq reads. 
+      * ``bwa``: BWA is suggested for short DNA reads.
+      * ``minimap2``: Minimap2 is suggested for long DNA or RNA-seq reads. 
+      * ``gmap``: GMAP is suggested for long cDNA reads.
+      * ``magicblast``: Magic-BLAST can be used for any type of read. 
 
 
 ==========================================================
@@ -78,13 +79,16 @@ NOTE: These steps are based on the instructions found on `Mamba's webpage <https
 
 * Download the installer running one of these commands:
 
-   * `curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"`
-   * `wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh""`
+   * ``curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"``
 
-* Run the script with `bash Miniforge3-$(uname)-$(uname -m).sh`. 
+   Or 
+
+   * ``wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh""``
+
+* Run the script with ``bash Miniforge3-$(uname)-$(uname -m).sh``. 
 * Accept all the default configuration (unless you know what you are doing).
-* Close and reopen the terminal (or, alternatively, run `source ~/.bashrc` if you are on bash, `source ~/.zshrc` if you are on zsh, or `source ~/.config/fish/config.fish` if you are on fish).
-* You can test that it is installed by running `mamba list`. It should display a list of installed packages.
+* Close and reopen the terminal (or, alternatively, run ``source ~/.bashrc`` if you are on bash, ``source ~/.zshrc`` if you are on zsh, or ``source ~/.config/fish/config.fish`` if you are on fish).
+* You can test that it is installed by running ``mamba list``. It should display a list of installed packages.
 
 .. _miniconda-installation:
 
@@ -95,10 +99,10 @@ How to install Miniconda?
 NOTE: These steps are based on the instructions found on `Miniforge's GitHub <https://github.com/conda-forge/miniforge>`_. 
 
 * Download the installer from https://docs.conda.io/en/latest/miniconda.html#linux-installers.
-* Run `bash Miniconda3-latest-Linux-x86_64.sh`. The filename can change.
+* Run ``bash Miniconda3-latest-Linux-x86_64.sh``. The filename can change.
 * Accept all the default configuration.
 * Close and reopen the terminal window.
-* You can test that it is installed by running `conda list`. It should display a list of installed packages.
+* You can test that it is installed by running ``conda list``. It should display a list of installed packages.
 
 .. toctree::
    :maxdepth: 3
