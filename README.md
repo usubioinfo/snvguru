@@ -4,11 +4,10 @@ SNVGuru is an RNA-seq analysis tool made in Python that downloads and filters hi
 
 ## How to install?
 
-* Download SNVGuru from GitHub running `git clone <URL>`.
+* Download SNVGuru from GitHub running `git clone https://github.com/usubioinfo/snvguru.git`.
 * Run `cd snvguru`.
 * Run `mamba env create -f environment.yml` (if you have Mamba installed) or `conda env create -f environment.yml` (if you have Miniconda or Anaconda installed). Be aware that you must have Mamba (recommended), Miniconda or Anaconda installed (see [How to install Mamba?](#how-to-install-mamba) or [How to install Miniconda?](#how-to-install-miniconda)).
 * Run `./install.sh`.
-* SNVGuru can install the required tools for you. For that, run `python3 src/main.py -d`. This is only needed the first time. These tools will be located in the `tools` folder.
 
 ## How to run?
 
