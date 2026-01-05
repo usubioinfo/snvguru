@@ -16,15 +16,16 @@ SNVGuru is an RNA-seq analysis tool made in Python that downloads and filters hi
 How to install?
 ===============
 
-* Download SNVGuru from GitHub running `git clone <URL>`.
+* Download SNVGuru from GitHub running `git clone https://github.com/usubioinfo/snvguru.git`.
 * Run `cd snvguru`.
-* Run `conda env create -f pipeline_environment.yml`. Be aware that you must have Miniconda or Anaconda installed (see :ref:`miniconda-installation`).
-* Run `pip install -r requirements.txt`.
-* SNVGuru can install the required tools for you. For that, run `python3 src/main.py -d`. This is only needed the first time. These tools will be located in the `tools` folder.
+* Run `mamba env create -f environment.yml` (if you have Mamba installed) or `conda env create -f pipeline_environment.yml` (if you have Miniconda or Anaconda installed). Be aware that you must have Mamba (recommended), Miniconda or Anaconda installed (see :ref:`mamba-installation` or :ref:`miniconda-installation`).
+* Run `./install.sh`.
 
 ===========
 How to run?
 ===========
+
+Make sure the environment is active by running `mamba activate snvguru` (if using Mamba) or `conda activate snvguru` (if using Anaconda or Miniconda).
 
 For running SNVGuru, the command is `python3 src/main.py`. It can read the configuration (including the input files) from the `config/main.config` file, or you can use the multiple arguments to customize your execution. Use `python3 src/main.py -h` for a description of all available arguments.
 
@@ -67,11 +68,31 @@ Do you have a sample report? How to interpret the figures?
 
 You can check `this sample report <influenzaA/analysis_report.html>`_ for *influenza A*, or `this one <mtuberculosis/analysis_report.html>`_ for *Mycobacterium tuberculosis*, or `this other one <hcapsulatum/analysis_report.html>`_ for *Histoplasma capsulatum*. 
 
+.. _mamba-installation:
+
+=========================
+How to install Mamba?
+=========================
+
+NOTE: These steps are based on the instructions found on `Mamba's webpage <https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html>`_. 
+
+* Download the installer running one of these commands:
+
+   * `curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"`
+   * `wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh""`
+
+* Run the script with `bash Miniforge3-$(uname)-$(uname -m).sh`. 
+* Accept all the default configuration (unless you know what you are doing).
+* Close and reopen the terminal (or, alternatively, run `source ~/.bashrc` if you are on bash, `source ~/.zshrc` if you are on zsh, or `source ~/.config/fish/config.fish` if you are on fish).
+* You can test that it is installed by running `mamba list`. It should display a list of installed packages.
+
 .. _miniconda-installation:
 
 =========================
 How to install Miniconda?
 =========================
+
+NOTE: These steps are based on the instructions found on `Miniforge's GitHub <https://github.com/conda-forge/miniforge>`_. 
 
 * Download the installer from https://docs.conda.io/en/latest/miniconda.html#linux-installers.
 * Run `bash Miniconda3-latest-Linux-x86_64.sh`. The filename can change.
