@@ -51,7 +51,7 @@ You can check <a href="https://bioinfo.usu.edu/snvguru/influenzaA/analysis_repor
 
 ## How to install Mamba?
 
-NOTE: These steps are based on the instructions found on [Mamba's webpage](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) and [Miniforge's GitHub](https://github.com/conda-forge/miniforge). 
+NOTE: These steps are based on the instructions found on [Mamba's webpage](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html). 
 
 * Download the installer running one of these commands:
   * `curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"`
@@ -62,6 +62,8 @@ NOTE: These steps are based on the instructions found on [Mamba's webpage](https
 * You can test that it is installed by running `mamba list`. It should display a list of installed packages.
 
 ## How to install Miniconda?
+
+NOTE: These steps are based on the instructions found on [Miniforge's GitHub](https://github.com/conda-forge/miniforge).
 
 * Download the installer from https://docs.conda.io/en/latest/miniconda.html#linux-installers.
 * Run `bash Miniconda3-latest-Linux-x86_64.sh`. The filename can change.
