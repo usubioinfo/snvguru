@@ -4,10 +4,11 @@ SNVGuru is an RNA-seq analysis tool made in Python that downloads and filters hi
 
 ## How to install?
 
-* Download SNVGuru from GitHub running `git clone <URL>`.
+* Download SNVGuru from GitHub running `git clone https://github.com/usubioinfo/snvguru.git`.
 * Run `cd snvguru`.
 * Run `mamba env create -f environment.yml` (if you have Mamba installed) or `conda env create -f environment.yml` (if you have Miniconda or Anaconda installed). Be aware that you must have Mamba (recommended), Miniconda or Anaconda installed (see [How to install Mamba?](#how-to-install-mamba) or [How to install Miniconda?](#how-to-install-miniconda)).
-* Run `./install.sh`.
+* Run `mamba activate snvguru` or `conda activate snvguru`.
+* Run `pip3 install -r requirements.txt`.
 
 ## How to run?
 
@@ -51,7 +52,7 @@ You can check <a href="https://bioinfo.usu.edu/snvguru/influenzaA/analysis_repor
 
 ## How to install Mamba?
 
-NOTE: These steps are based on the instructions found on [Mamba's webpage](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) and [Miniforge's GitHub](https://github.com/conda-forge/miniforge). 
+NOTE: These steps are based on the instructions found on [Mamba's webpage](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html). 
 
 * Download the installer running one of these commands:
   * `curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"`
@@ -62,6 +63,8 @@ NOTE: These steps are based on the instructions found on [Mamba's webpage](https
 * You can test that it is installed by running `mamba list`. It should display a list of installed packages.
 
 ## How to install Miniconda?
+
+NOTE: These steps are based on the instructions found on [Miniforge's GitHub](https://github.com/conda-forge/miniforge).
 
 * Download the installer from https://docs.conda.io/en/latest/miniconda.html#linux-installers.
 * Run `bash Miniconda3-latest-Linux-x86_64.sh`. The filename can change.

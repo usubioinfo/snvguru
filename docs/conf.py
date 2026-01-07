@@ -49,7 +49,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', "main.py"]
 # a list of builtin themes.
 #
 # html_theme = 'alabaster'
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'sphinx_book_theme'
 # html_theme = 'sphinx_material'
 
 # Add any paths that contain custom static files (such as style sheets) here,

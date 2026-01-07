@@ -5,7 +5,6 @@ import glob
 import config
 import logger
 import arguments
-import software
 import downloads
 import quality
 import cropping
@@ -26,9 +25,6 @@ ref = path.stem
 config.hostReferencePath = [f"{config.workPath}/2-alignment/host/genomes/{ref}/genome.fa"]
 
 step = config.step
-
-if step not in ["mergeCalling", "generateGraphs", "generateReport"] and config.resumeFrom not in ["mergeCalling", "generateGraphs", "generateReport"]:
-    software.checkTools()
 
 sras = []
 useFastqInputDir = False

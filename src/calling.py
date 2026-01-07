@@ -15,7 +15,7 @@ log = logger.logger
 baseDir = config.workPath + "/4-snvCalling"
 
 def runReditools2(sras):
-    """Runs REDItools2.
+    """Runs REDItools3.
 
     It creates an index for each reference genome using samtools faidx 
     and runs the calling process for each run BAM file. The resulting 
@@ -32,8 +32,6 @@ def runReditools2(sras):
             * Run ID  
     """
     indexDir = baseDir + "/indices"
-    homopolDir = baseDir + "/homopol"
-    util.makeDirectory(homopolDir)
     callingDir = baseDir + "/calling/reditools"
     util.makeDirectory(callingDir)
     bamDir = config.workPath + "/2-alignment/pathogen/bam"
@@ -45,7 +43,6 @@ def runReditools2(sras):
         util.makeDirectory(f"{indexDir}/{ref}")
         cmd = f"cp {fullRef} {indexDir}/{ref}/"
         util.execCmd(cmd)
-        util.makeDirectory(f"{homopolDir}/{ref}")
         util.makeDirectory(f"{callingDir}/{ref}")
         log.info(f"Building Samtools index file for {ref}...")
         files = glob.glob(f"{indexDir}/{ref}/{ref}_faidx.done")
@@ -67,13 +64,17 @@ def runReditools2(sras):
             util.runCommand(cmd, jobName="index", jobs=jobs, dep=jobsRef[ref])
     util.waitForJobs(jobs)
     jobs = []
+    cmd = f"{config.reditoolsCommand} find-repeats {config.reditoolsFindRepeats} -o {callingDir}/{ref}/homopol.txt {indexDir}/{ref}/genome.fa"
+    util.runCommand(cmd, jobName="reditoolsFindRepeats", jobs=jobs)
+    util.waitForJobs(jobs)
+    jobs = []
     for fullRef in config.pathogenReferenceGenomePaths:
         path = pathlib.Path(fullRef)
         ref = path.parent.name
         for sra in sras:
             run = sra[2]
-            cmd = f"{config.reditoolsCommand} -c -f {bamDir}/{ref}/{run}_{config.alignmentSoftwarePathogen}.bam -r {indexDir}/{ref}/genome.fa -m {homopolDir}/{ref}/{run}.homopol.txt -o {callingDir}/{ref}/{run}.reditools.txt{config.reditools}"
-            util.runCommand(cmd, jobName="reditools2", jobs=jobs)
+            cmd = f"{config.reditoolsCommand} analyze -r {indexDir}/{ref}/genome.fa -m {callingDir}/{ref}/homopol.txt -o {callingDir}/{ref}/{run}.reditools.txt {config.reditoolsAnalyze} {bamDir}/{ref}/{run}_{config.alignmentSoftwarePathogen}.bam"
+            util.runCommand(cmd, jobName="reditoolsAnalyze", jobs=jobs)
     util.waitForJobs(jobs)
     for fullRef in config.pathogenReferenceGenomePaths:
         path = pathlib.Path(fullRef)
@@ -274,7 +275,6 @@ def _reditoolsToVcf(path, run):
         df = pd.DataFrame(final, columns=['#CHROM', 'POSITION','ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'VARIANT_READ', 'TOTAL_READ', 'FREQUENCY', 'A', 'C', 'G', 'T', 'INFO' ])
         df["ALT"] = df["ALT"].str.split(",")
         df = df.explode(["ALT"])
-        print(df.apply(_calculateFrequencyReditools2, axis=1).head())
         df["FREQUENCY"] = df.apply(_calculateFrequencyReditools2, axis=1)
         df = df.round({"FREQUENCY": 6})
         df["FREQUENCY"] = df["FREQUENCY"] * 100

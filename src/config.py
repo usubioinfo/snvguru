@@ -16,7 +16,7 @@ starIndexH = starMappingH = starIndexV = starMappingV = ""
 magicblastIndexH = magicblastIndexV = magicblastMappingH = magicblastMappingV = ""
 minimapIndexH = minimapPresetH = minimapMappingH = minimapIndexV = minimapPresetV = minimapMappingV = ""
 gmapIndexH = gmapMappingH = gmapIndexV = gmapMappingV = ""
-reditools = jacusa = bcftools = qualimap = fastqc = ""
+reditoolsAnalyze = reditoolsFindRepeats = jacusa = bcftools = qualimap = fastqc = ""
 pathogenReferenceGenomePaths = []
 pathogenReferenceGenesPaths = []
 pathogenReferenceProteinPaths = []
@@ -28,7 +28,7 @@ def setWorkPath(workPathP):
     workPath = workPathP
 
 def loadConfig(configDir="../config/", stepP=None, resumeFromP=None):
-    global reditools, jacusa, bcftools, workPath
+    global reditoolsAnalyze, reditoolsFindRepeats, jacusa, bcftools, workPath
     with open(f"{configDir}/main.config", "r") as f:
         for line in f:
             line = line.strip()
@@ -233,21 +233,21 @@ def loadConfig(configDir="../config/", stepP=None, resumeFromP=None):
                     originalHostPath = ""
                 else:
                     originalHostPath = [val]
-            elif line.startswith("originalPathogenGenomePaths"):
+            elif line.startswith("pathogenReferenceGenomePaths"):
                 global originalPathogenGenomePaths
                 val = line.split()[1]
                 if val == "None":
                     originalPathogenGenomePaths = [""]
                 else:
                     originalPathogenGenomePaths = val
-            elif line.startswith("originalPathogenGenesPaths"):
+            elif line.startswith("pathogenReferenceGenesPaths"):
                 global originalPathogenGenesPaths
                 val = line.split()[1]
                 if val == "None":
                     originalPathogenGenesPaths = [""]
                 else:
                     originalPathogenGenesPaths = val
-            elif line.startswith("originalPathogenProteinPaths"):
+            elif line.startswith("pathogenReferenceProteinPaths"):
                 global originalPathogenProteinPaths
                 val = line.split()[1]
                 if val == "None":
@@ -275,21 +275,21 @@ def loadConfig(configDir="../config/", stepP=None, resumeFromP=None):
                 global reditoolsCommand
                 val = shlex.split(line)[1]
                 if val == "None":
-                    reditoolsCommand = f"python {toolsPath}/REDItools2/src/cineca/reditools.py"
+                    reditoolsCommand = f"python -m reditools"
                 else:
                     reditoolsCommand = val
             elif line.startswith("callingReadMinQuality"):
                 global callingReadMinQuality
                 val = line.split()[1]
                 callingReadMinQuality = int(val)
-                reditools += f" -q {int(val)}"
+                reditoolsAnalyze += f" -q {int(val)}"
                 jacusa += f" -m {int(val)}"
                 bcftools += f" -q {int(val)}"
             elif line.startswith("callingBaseMinQuality"):
                 global callingBaseMinQuality
                 val = line.split()[1]
                 callingBaseMinQuality = int(val)
-                reditools += f" -bq {int(val)}"
+                reditoolsAnalyze += f" -bq {int(val)}"
                 jacusa += f" -q {int(val)}"
                 bcftools += f" -Q {int(val)}"
             elif line.startswith("callingSoftware"):
@@ -931,9 +931,23 @@ def loadConfig(configDir="../config/", stepP=None, resumeFromP=None):
     with open(f"{configDir}reditools.config", "r") as f:
         line = f.readline()
         while line:
-            if not line.startswith("#"):
-                reditools += line.split("#")[0].strip() + " "
-            line = f.readline()
+            if line.startswith("#"):
+                line = f.readline()
+            elif line.startswith("analyze:"):
+                line = f.readline()
+                while line.startswith(" "):
+                    if not line.startswith("#"):
+                        reditoolsAnalyze += line.split("#")[0].strip() + " "
+                    line = f.readline()
+            elif line.startswith("find-repeats:"):
+                line = f.readline()
+                while line.startswith(" "):
+                    splits = line.split()
+                    if not splits[0].startswith("#"):
+                        reditoolsFindRepeats += line.split("#")[0].strip() + " "
+                    line = f.readline()
+            else:
+                line = f.readline()
 
     # CALLING - JACUSA
     with open(f"{configDir}jacusa.config", "r") as f:

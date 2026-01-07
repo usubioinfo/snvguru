@@ -6,7 +6,6 @@ import config
 import logger
 import util
 import pathlib
-import software
 import os
 from argparse import ArgumentParser
 
@@ -36,7 +35,6 @@ def _getParser():
     parser.add_argument("-sr", "--sourceType", metavar="OPTION", choices=["project", "sra", "file"], dest="sourceType", help="source type for the list of reads. Available options: 'project' (will read projects.txt), 'sra' (will read sras.txt) and 'file' (will read singleInput.txt, mixedInput.txt or pairedInput.txt depending on the input type)")
     parser.add_argument("-it", "--inputType", metavar="OPTION", choices=["single", "paired", "mixed"], dest="inputType", help="input type for the read files if sourceType = 'file'. Available options: 'single', 'paired' and 'mixed'")
     parser.add_argument("-if", "--inputFastqDir", metavar="PATH", dest="inputFastqDir", help="directory where all the input FASTQ files are located. Only for sourceType = 'file'")
-    parser.add_argument("-d", "--download", dest="download", help="download all required tools", action="store_const", const=1)
     parser.add_argument("-hs", "--slurm", dest="slurm", help="run SLURM jobs", action="store_const", const=1)
     parser.add_argument("-ht", "--slurmTime", metavar="HOURS", dest="slurmTime", type=int, help="SLURM time allocation in hours per job")
     parser.add_argument("-hm", "--slurmMem", metavar="MEMORY", dest="slurmMem", type=str, help="SLURM memory allocation per job. For example, '8G' or '8000M'")
@@ -96,11 +94,6 @@ def parseArgs():
         
     if config.resumeFrom != "None":
         log.info(f"Resuming from step {config.resumeFrom}...")
-    
-    if args.download == 1:
-        software.downloadTools()
-        log.info("All required software installed correctly.")
-        util.stopProgram()
 
     if args.referenceHostPath != None:
         config.originalHostPath = [args.referenceHostPath]
