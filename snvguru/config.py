@@ -142,7 +142,11 @@ def loadConfig(configDir="config/", stepP=None, resumeFromP=None):
                 global sratoolkitPath
                 val = line.split()[1]
                 if val == "None":
-                    sratoolkitPath = ""
+                    auto_path = os.path.expanduser("~/.snvguru/tools/sratoolkit/bin/")
+                    if os.path.exists(os.path.join(auto_path, "prefetch")):
+                        sratoolkitPath = auto_path
+                    else:
+                        sratoolkitPath = ""
                 else:
                     sratoolkitPath = f"{val}/"
             # SAMtools path

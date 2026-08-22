@@ -75,6 +75,47 @@ def getExperimentsList():
                 typeCounter += 1
         return sras
 
+import subprocess
+import shutil
+import urllib.request
+import tarfile
+
+def _ensureSraToolkit():
+    """Checks if prefetch works on the host system.
+    If it fails due to GLIBC incompatibility (e.g. on CentOS 7), it automatically
+    downloads and configures NCBI's static CentOS build.
+    """
+    cmd = f"{config.sratoolkitPath}prefetch --version"
+    res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    err = res.stderr.decode("utf-8")
+    out = res.stdout.decode("utf-8")
+    
+    if res.returncode != 0 and ("GLIBC" in err or "GLIBC" in out or "not found" in err or "not found" in out):
+        tools_dir = os.path.expanduser("~/.snvguru/tools")
+        sra_bin_dir = os.path.join(tools_dir, "sratoolkit", "bin")
+        if not os.path.exists(os.path.join(sra_bin_dir, "prefetch")):
+            log.info("Host GLIBC compatibility issue detected with sra-tools. Automatically downloading NCBI static binaries for CentOS/Linux...")
+            os.makedirs(tools_dir, exist_ok=True)
+            tar_path = os.path.join(tools_dir, "sratoolkit.tar.gz")
+            url = "https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/current/sratoolkit.current-centos_linux64.tar.gz"
+            try:
+                urllib.request.urlretrieve(url, tar_path)
+                with tarfile.open(tar_path, "r:gz") as tar:
+                    tar.extractall(path=tools_dir)
+                extracted_dirs = glob.glob(os.path.join(tools_dir, "sratoolkit*centos*"))
+                if extracted_dirs:
+                    target_dir = os.path.join(tools_dir, "sratoolkit")
+                    if os.path.exists(target_dir):
+                        shutil.rmtree(target_dir)
+                    os.rename(extracted_dirs[0], target_dir)
+                if os.path.exists(tar_path):
+                    os.remove(tar_path)
+            except Exception as e:
+                log.error(f"Failed to auto-download static SRA toolkit: {e}")
+                return
+        config.sratoolkitPath = sra_bin_dir + "/"
+        log.info(f"Using NCBI static SRA toolkit from {config.sratoolkitPath}")
+
 def downloadSRAs(sras):
     """Downloads the FASTQ files for each run using the prefetch and
     fasterq-dump tools from SRAtoolkit.
@@ -88,6 +129,7 @@ def downloadSRAs(sras):
             * Run type. "single" if single-end, "paired" if paired-end
             * Run ID
     """
+    _ensureSraToolkit()
     fastqDir = config.workPath + "/data/fastq"
     util.makeDirectory(fastqDir)
     sraDir = config.workPath + "/data/sra"
