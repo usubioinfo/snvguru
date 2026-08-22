@@ -1,5 +1,5 @@
 from jinja2 import Environment, FileSystemLoader
-import config
+from snvguru import config
 from Bio import Entrez
 import xml.etree.ElementTree as ET
 import pathlib
@@ -26,7 +26,7 @@ def generateHtmlReport():
     totalSamples = 0
     inputs = []
     if config.source == "file":
-        with open(f"../{config.inputType}Input.txt", "r") as f:
+        with open(os.path.join(sourcePath, f"{config.inputType}Input.txt"), "r") as f:
             # Skip the first line
             line = f.readline()
             for line in f:
@@ -57,7 +57,7 @@ def generateHtmlReport():
                 totalSamples += 1
 
     elif config.source == "sra":
-        with open("../sras.txt", "r") as f:
+        with open(os.path.join(sourcePath, "sras.txt"), "r") as f:
             # Skip the first line
             line = f.readline()
             for line in f:
@@ -89,7 +89,7 @@ def generateHtmlReport():
                 totalSamples += 1
 
     elif config.source == "project":
-        with open("../projects.txt", "r") as f:
+        with open(os.path.join(sourcePath, "projects.txt"), "r") as f:
             # Skip the first line
             line = f.readline()
             line = f.readline().strip()
@@ -305,8 +305,10 @@ def generateHtmlReport():
 
         break
 
-    env = Environment(loader=FileSystemLoader(sourcePath))
-    template = env.get_template(f'report_template.html')
+    import importlib.resources
+    from jinja2 import Template
+    template_content = importlib.resources.read_text("snvguru", "report_template.html")
+    template = Template(template_content)
     content = template.render(
         readsSource = readsSource,
         totalSamples =  totalSamples,

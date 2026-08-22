@@ -3,9 +3,9 @@
 
 import os
 import subprocess
-import logger
+from snvguru import logger
 import sys
-import config
+from snvguru import config
 from Bio import SeqIO
 import re
 from waiting import wait

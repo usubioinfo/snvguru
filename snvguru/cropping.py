@@ -1,9 +1,9 @@
 """This module handles everything about the cropping of the reads.
 """
 
-import util
-import config
-import logger
+from snvguru import util
+from snvguru import config
+from snvguru import logger
 import glob
 import pathlib
 

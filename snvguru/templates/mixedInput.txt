@@ -1,0 +1,6 @@
+Run     ID  Type    File1   File2
+# Type can be either 'single' or 'paired'. 
+# Single-end takes one file. 
+# Paired-end must have two files.
+SRR10903401 401   paired  401a.fastq  401b.fastq
+SRR11059940 940   single  940a.fastq

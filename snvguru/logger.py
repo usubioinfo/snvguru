@@ -2,7 +2,7 @@
 """
 
 import logging
-import config
+from snvguru import config
 import os
 from datetime import datetime
 

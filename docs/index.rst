@@ -20,7 +20,8 @@ How to install?
 * Run ``cd snvguru``.
 * Run ``mamba env create -f environment.yml`` (if you have Mamba installed) or ``conda env create -f pipeline_environment.yml`` (if you have Miniconda or Anaconda installed). Be aware that you must have Mamba (recommended), Miniconda or Anaconda installed (see :ref:`mamba-installation` or :ref:`miniconda-installation`).
 * Run ``mamba activate snvguru`` or ``conda activate snvguru``.
-* Run ``pip3 install -r requirements.txt``.
+* Run ``pip3 install -e .`` (notice the dot ``.`` at the end).
+* Go to your desired working directory and run ``snvguru init`` to copy the default configuration and input template files to that directory.
 
 ===========
 How to run?
@@ -28,7 +29,7 @@ How to run?
 
 Make sure the environment is active by running ``mamba activate snvguru`` (if using Mamba) or ``conda activate snvguru`` (if using Anaconda or Miniconda).
 
-For running SNVGuru, the command is ``python3 src/main.py``. It can read the configuration (including the input files) from the ``config/main.config`` file, or you can use the multiple arguments to customize your execution. Use ``python3 src/main.py -h`` for a description of all available arguments.
+For running SNVGuru, the command is ``snvguru``. You can check the default configuration (including the input files) at ``config/main.config``, or you can use the multiple arguments to customize your execution. Use ``snvguru -h`` for a description of all available arguments.
 
 =================
 How to configure?

@@ -1,10 +1,10 @@
 """This module handles everything about the download of the runs.
 """
 
-import util
+from snvguru import util
 import xml.etree.ElementTree as ET
-import logger
-import config
+from snvguru import logger
+from snvguru import config
 import glob
 import re
 import os
@@ -24,7 +24,7 @@ def getExperimentsList():
             1 - Run type. "single" if single-end, "paired" if paired-end
             2 - Run ID
     """
-    with open("../projects.txt", "r") as f:
+    with open("projects.txt", "r") as f:
         # Skip the first line
         line = f.readline()
         line = f.readline().strip()

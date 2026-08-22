@@ -1,9 +1,9 @@
 """This module handles everything about the SNV calling.
 """
 
-import util
-import config
-import logger
+from snvguru import util
+from snvguru import config
+from snvguru import logger
 import io
 import pandas as pd
 import numpy as np

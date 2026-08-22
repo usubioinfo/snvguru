@@ -1,9 +1,9 @@
 """This module handles everything about quality analysis.
 """
 
-import util
-import config
-import logger
+from snvguru import util
+from snvguru import config
+from snvguru import logger
 import glob
 import pathlib
 

@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "snvguru"
+version = "1.0.0"
+description = "SNVGuru: An RNA-seq analysis tool for filtering and variant calling (SNV)"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+dependencies = [
+    "biopython",
+    "joblib",
+    "waiting",
+    "Jinja2==3.1.2",
+    "REDItools3",
+    "pandas>=1.3.5",
+    "matplotlib>=3.5.3",
+    "seaborn>=0.12.2",
+    "dask>=2022.2.0",
+    "tables>=3.7.0",
+]
+
+[project.scripts]
+snvguru = "snvguru.main:main"
+
+[tool.setuptools]
+packages = ["snvguru"]
+
+[tool.setuptools.package-data]
+snvguru = [
+    "report_template.html",
+    "templates/*.txt",
+    "templates/config/*.config"
+]

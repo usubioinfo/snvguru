@@ -1,0 +1,2 @@
+Run     ID  File1   File2
+SRR10903401 A   401a.fastq  401b.fastq

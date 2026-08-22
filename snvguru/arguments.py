@@ -2,9 +2,9 @@
 configuration given the command line arguments.
 """
 
-import config
-import logger
-import util
+from snvguru import config
+from snvguru import logger
+from snvguru import util
 import pathlib
 import os
 from argparse import ArgumentParser

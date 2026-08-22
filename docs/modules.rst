@@ -11,8 +11,7 @@ Modules
    cropping
    downloads
    logger
-   pipeline
+   main
    quality
    results
-   software
    util

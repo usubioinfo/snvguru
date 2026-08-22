@@ -2,9 +2,9 @@
 """
 
 from operator import countOf
-import util
-import config
-import logger
+from snvguru import util
+from snvguru import config
+from snvguru import logger
 import glob
 import pathlib
 import math
@@ -216,7 +216,8 @@ def runMagicBlast(sras, host):
             jobsRef[ref] = ""
         else:
             params = config.magicblastIndexH if host else config.magicblastIndexV
-            cmd = f"{config.magicblastPath}/makeblastdb -in {fullRef} -out {indexDir}/{ref} -parse_seqids -dbtype nucl {params}"
+            magicblast_prefix = f"{config.magicblastPath}/" if config.magicblastPath else ""
+            cmd = f"{magicblast_prefix}makeblastdb -in {fullRef} -out {indexDir}/{ref} -parse_seqids -dbtype nucl {params}"
             jobsRef[ref] = util.runCommand(cmd, jobName="magicblastdb", outFile=f"{indexDir}/{ref}_magicblast.done")
         for sra in sras:
             files = ""
@@ -228,7 +229,7 @@ def runMagicBlast(sras, host):
                 files = f"-query {sra[0][0]}"
             sam = sra[2] + "_magicblast.sam"
             params = config.magicblastMappingH if host else config.magicblastMappingV
-            cmd = f"{config.magicblastPath}/magicblast -db {indexDir}/{ref} {files} -out {samDir}/{ref}/{sam} -infmt fastq -num_threads {config.threads} {params}"
+            cmd = f"{magicblast_prefix}magicblast -db {indexDir}/{ref} {files} -out {samDir}/{ref}/{sam} -infmt fastq -num_threads {config.threads} {params}"
             util.runCommand(cmd, jobName="magicblast", jobs=jobs, dep=jobsRef[ref])
     util.waitForJobs(jobs)
 

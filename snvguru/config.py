@@ -7,7 +7,6 @@ import glob
 import re
 import shlex
 
-os.chdir(os.path.dirname(__file__))
 
 step = ""
 hisatIndexH = hisatIndexV = hisatMappingH = hisatMappingV = ""
@@ -27,9 +26,17 @@ def setWorkPath(workPathP):
     global workPath 
     workPath = workPathP
 
-def loadConfig(configDir="../config/", stepP=None, resumeFromP=None):
+def loadConfig(configDir="config/", stepP=None, resumeFromP=None):
     global reditoolsAnalyze, reditoolsFindRepeats, jacusa, bcftools, workPath
-    with open(f"{configDir}/main.config", "r") as f:
+    if configDir and not configDir.endswith('/') and not configDir.endswith('\\'):
+        configDir += '/'
+    main_config_path = f"{configDir}main.config"
+    if not os.path.exists(main_config_path):
+        import sys
+        print(f"Error: Configuration file '{main_config_path}' not found.", file=sys.stderr)
+        print("Please run 'snvguru init' to initialize default configurations and input files in your directory.", file=sys.stderr)
+        sys.exit(1)
+    with open(main_config_path, "r") as f:
         for line in f:
             line = line.strip()
             # Source
@@ -680,14 +687,14 @@ def loadConfig(configDir="../config/", stepP=None, resumeFromP=None):
                 global magicblastPath
                 val = line.split()[1]
                 if val == "None":
-                    magicblastPath = f"{toolsPath}/ncbi-magicblast-1.6.0/bin/"
+                    magicblastPath = ""
                 else:
-                    magicblastPath = f"{val}/"
+                    magicblastPath = val.rstrip('/')
             if line.startswith("minimapPath"):
                 global minimapPath
                 val = line.split()[1]
                 if val == "None":
-                    minimapPath = f"{toolsPath}/minimap2-2.20_x64-linux/minimap2"
+                    minimapPath = "minimap2"
                 else:
                     minimapPath = val
             if line.startswith("gmapPath"):

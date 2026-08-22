@@ -2,9 +2,9 @@
 output.
 """
 
-import util
-import config
-import logger
+from snvguru import util
+from snvguru import config
+from snvguru import logger
 import pandas as pd
 import io
 import numpy as np
@@ -389,7 +389,8 @@ def runSnpEff(sras):
     util.makeDirectory(snpeffDir)
     reditoolsDir = callingDir + "/calling/reditools"
     jacusaDir = callingDir + "/calling/jacusa"
-    util.execCmd(f"cp ../snpEff.config {config.workPath}/")
+    if os.path.exists("snpEff.config"):
+        util.execCmd(f"cp snpEff.config {config.workPath}/")
     with open(f"{config.workPath}/snpEff.config", "w") as f:
         for fullRef in config.pathogenReferenceGenomePaths:
             path = pathlib.Path(fullRef)
