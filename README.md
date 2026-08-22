@@ -4,12 +4,31 @@ SNVGuru is an RNA-seq analysis tool made in Python that downloads and filters hi
 
 ## How to install?
 
-* Download SNVGuru from GitHub running `git clone https://github.com/usubioinfo/snvguru.git`.
-* Run `cd snvguru`.
-* Run `mamba env create -f environment.yml` (if you have Mamba installed) or `conda env create -f environment.yml` (if you have Miniconda or Anaconda installed). Be aware that you must have Mamba (recommended), Miniconda or Anaconda installed (see [How to install Mamba?](#how-to-install-mamba) or [How to install Miniconda?](#how-to-install-miniconda)).
-* Run `mamba activate snvguru` or `conda activate snvguru`.
-* Run `pip3 install -e .` (notice the dot at the end).
-* Go to your desired working directory and run `snvguru init` to copy the default configuration and input template files to that directory.
+### Quick Installation (Recommended)
+
+1. Clone the repository and navigate into it:
+   ```bash
+   git clone https://github.com/usubioinfo/snvguru.git
+   cd snvguru
+   ```
+2. Install the environment and the package:
+   ```bash
+   ./install.sh
+   ```
+   *Note: This script automatically detects your Mamba or Conda installation, creates/updates the `snvguru` environment, and installs the package. Be aware that you must have Mamba (recommended), Miniconda or Anaconda installed (see [How to install Mamba?](#how-to-install-mamba) or [How to install Miniconda?](#how-to-install-miniconda)).*
+   
+3. Go to your desired working directory and initialize your files:
+   ```bash
+   snvguru init
+   ```
+
+### Manual Installation
+
+1. Run `mamba env create -f environment.yml` (if you have Mamba installed) or `conda env create -f environment.yml` (if you have Miniconda or Anaconda installed). Be aware that you must have Mamba (recommended), Miniconda or Anaconda installed (see [How to install Mamba?](#how-to-install-mamba) or [How to install Miniconda?](#how-to-install-miniconda)).
+2. Run `mamba activate snvguru` (or `conda activate snvguru`).
+3. Run `pip3 install -e .` (notice the dot at the end).
+
+
 
 ## How to run?
 
