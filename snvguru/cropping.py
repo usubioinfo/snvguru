@@ -41,14 +41,24 @@ def detectFilesToCrop(sras):
                 util.stopProgram()
             with open(f"{fastqcDir}/{runDir}/fastqc_data.txt") as f:
                 values = []
-                for _ in range(13):
-                    f.readline()
+                in_module = False
                 for line in f:
-                    if line.startswith(">>END_MODULE"):
-                        break
                     line = line.strip()
-                    val = float(line.split()[1])
-                    values.append(val)
+                    if line.startswith(">>Per base sequence quality"):
+                        in_module = True
+                        continue
+                    if in_module:
+                        if line.startswith(">>END_MODULE"):
+                            break
+                        if line.startswith("#"):
+                            continue
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            try:
+                                val = float(parts[1])
+                                values.append(val)
+                            except ValueError:
+                                pass
                 maxValue = -1
                 for val in values:
                     if val < config.cropMinMeanQuality:

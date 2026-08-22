@@ -9,13 +9,13 @@ SNVGuru is an RNA-seq analysis tool made in Python that downloads and filters hi
 * Run `mamba env create -f environment.yml` (if you have Mamba installed) or `conda env create -f environment.yml` (if you have Miniconda or Anaconda installed). Be aware that you must have Mamba (recommended), Miniconda or Anaconda installed (see [How to install Mamba?](#how-to-install-mamba) or [How to install Miniconda?](#how-to-install-miniconda)).
 * Run `mamba activate snvguru` or `conda activate snvguru`.
 * Run `pip3 install -e .` (notice the dot at the end).
-* Go to your desired working directory and run `snvguru init` to copy the default configuration files to that directory.
+* Go to your desired working directory and run `snvguru init` to copy the default configuration and input template files to that directory.
 
 ## How to run?
 
 Make sure the environment is active by running `mamba activate snvguru` (if using Mamba) or `conda activate snvguru` (if using Anaconda or Miniconda).
 
-For running SNVGuru, the command is `snvguru`. It can read the configuration (including the input files) from the `config/main.config` file, or you can use the multiple arguments to customize your execution. Use `snvguru -h` for a description of all available arguments.
+For running SNVGuru, the command is `snvguru`. You can check the default configuration (including the input files) at `config/main.config`, or you can use the multiple arguments to customize your execution. Use `snvguru -h` for a description of all available arguments.
 
 ## How to configure?
 

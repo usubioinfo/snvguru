@@ -246,21 +246,21 @@ def loadConfig(configDir="config/", stepP=None, resumeFromP=None):
                 if val == "None":
                     originalPathogenGenomePaths = [""]
                 else:
-                    originalPathogenGenomePaths = val
+                    originalPathogenGenomePaths = val.split(",")
             elif line.startswith("pathogenReferenceGenesPaths"):
                 global originalPathogenGenesPaths
                 val = line.split()[1]
                 if val == "None":
                     originalPathogenGenesPaths = [""]
                 else:
-                    originalPathogenGenesPaths = val
+                    originalPathogenGenesPaths = val.split(",")
             elif line.startswith("pathogenReferenceProteinPaths"):
                 global originalPathogenProteinPaths
                 val = line.split()[1]
                 if val == "None":
                     originalPathogenProteinPaths = [""]
                 else:
-                    originalPathogenProteinPaths = val
+                    originalPathogenProteinPaths = val.split(",")
             # Calling - General
             elif line.startswith("bcftoolsPath"):
                 global bcftoolsPath

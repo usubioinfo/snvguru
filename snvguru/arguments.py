@@ -7,6 +7,7 @@ from snvguru import logger
 from snvguru import util
 import pathlib
 import os
+import sys
 from argparse import ArgumentParser
 
 log = None
@@ -141,7 +142,7 @@ def parseArgs():
         config.pathogenReferenceGenesFormats.append(genesFormat)
         util.makeDirectory(f"{config.workPath}/data/{ref}/")
         if not os.path.isfile(genome):
-            log.info(f"The genome file {refFile} was not found.")
+            log.info(f"The genome file {path.name} was not found.")
             util.stopProgram()
         else:
             path = f"{config.workPath}/data/{ref}/genome.fa"
@@ -149,7 +150,7 @@ def parseArgs():
                 util.execCmd(f"cp {genome} {path}")
             config.pathogenReferenceGenomePaths.append(path)
         if not os.path.isfile(genes):
-            log.info(f"The genes file {refFile} was not found.")
+            log.info(f"The genes file {pathlib.Path(genes).name} was not found.")
             util.stopProgram()
         else:
             path = f"{config.workPath}/data/{ref}/genes.{genesExtension}"
@@ -217,4 +218,5 @@ def parseArgs():
     config.step = step
 
 parser = _getParser()
-parseArgs()
+if not any("sphinx" in arg for arg in sys.argv):
+    parseArgs()

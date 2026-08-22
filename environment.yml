@@ -34,3 +34,5 @@ dependencies:
       - waiting
       - Jinja2==3.1.2
       - REDItools3
+      - sphinx
+      - sphinx-book-theme

@@ -122,11 +122,11 @@ def execCmd(cmd, file=None, mode="w"):
             strOut = " >> " + file
         log.info(f"===> {cmd}{strOut}")
         with open(file, mode) as f:
-            subprocess.run(cmd.split(), stdout=f)
+            subprocess.run(cmd, shell=True, stdout=f)
             return ""
     else:
         log.info(f"===> {cmd}")
-        output = subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         outString = output.stdout.decode("utf-8")
         errString = output.stderr.decode("utf-8")
         # print(outString)
