@@ -264,44 +264,44 @@ def generateHtmlReport():
         if config.figGenerateGlobalPresencePerRunPerPositionGraphs.lower() == "on":
             if config.figPositionGraph in ["both", "circos"]:
                 circosPlots = sorted(glob.glob(f"{workPath}6-visualization/{ref}/graphs/circos/*.png"))
-                circosPlot = circosPlots[0]
+                circosPlot = circosPlots[0] if circosPlots else ""
             if config.figPositionGraph in ["both", "heatmap"]:
                 heatmapPlots = sorted(glob.glob(f"{workPath}6-visualization/{ref}/graphs/heatmap/*.png"))
-                heatmapPlot = heatmapPlots[0]
+                heatmapPlot = heatmapPlots[0] if heatmapPlots else ""
 
         if config.figGenerateGlobalMutationCountPerGeneBarPlots.lower() == "on":
             geneMutationCountBarPlots = sorted(glob.glob(f"{workPath}6-visualization/{ref}/graphs/geneBarPlot/*.png"))
-            geneMutationCountBarPlot = geneMutationCountBarPlots[0]
+            geneMutationCountBarPlot = geneMutationCountBarPlots[0] if geneMutationCountBarPlots else ""
         elif config.figGenerateMutationCountPerGeneBarPlotPerRun.lower() == "on":
             geneMutationCountBarPlots = sorted(glob.glob(f"{workPath}6-visualization/{ref}/*/graphs/geneBarPlot/*.png"))
-            geneMutationCountBarPlot = geneMutationCountBarPlots[0]
+            geneMutationCountBarPlot = geneMutationCountBarPlots[0] if geneMutationCountBarPlots else ""
         
         if config.figGenerateGlobalMutationCountPerGeneBoxPlots.lower() == "on":
             geneMutationCountBoxPlots = sorted(glob.glob(f"{workPath}6-visualization/{ref}/graphs/geneBoxPlot/*.png"))
-            geneMutationCountBoxPlot = geneMutationCountBoxPlots[0]
+            geneMutationCountBoxPlot = geneMutationCountBoxPlots[0] if geneMutationCountBoxPlots else ""
         elif config.figGenerateMutationCountPerGeneBoxPlotPerRun.lower() == "on":
             geneMutationCountBoxPlots = sorted(glob.glob(f"{workPath}6-visualization/{ref}/*/graphs/geneBoxPlot/*.png"))
-            geneMutationCountBoxPlot = geneMutationCountBoxPlots[0]
+            geneMutationCountBoxPlot = geneMutationCountBoxPlots[0] if geneMutationCountBoxPlots else ""
             
         if config.figGenerateFrequencyPerMutationPerPositionGraphsPerRun.lower() == "on":
             if config.figPositionGraph in ["both", "circos"]:
                 circosPerRunPlots = sorted(glob.glob(f"{workPath}6-visualization/{ref}/*/graphs/circos/*.png"))
-                circosPerRunPlot = circosPerRunPlots[0]
+                circosPerRunPlot = circosPerRunPlots[0] if circosPerRunPlots else ""
             if config.figPositionGraph in ["both", "heatmap"]:
                 heatmapPerRunPlots = sorted(glob.glob(f"{workPath}6-visualization/{ref}/*/graphs/heatmap/*.png"))
-                heatmapPerRunPlot = heatmapPlots[0]
+                heatmapPerRunPlot = heatmapPerRunPlots[0] if heatmapPerRunPlots else ""
         
         if config.figGenerateGlobalFrequencyPerGeneStripPlots.lower() == "on":
             frequencyPerGenePlots = sorted(glob.glob(f"{workPath}6-visualization/{ref}/graphs/frequencyPerGene/*.png"))
-            frequencyPerGenePlot = frequencyPerGenePlots[0]
+            frequencyPerGenePlot = frequencyPerGenePlots[0] if frequencyPerGenePlots else ""
 
         if config.figGenerateGlobalRegressionPlots.lower() == "on":
             regressionPlots = sorted(glob.glob(f"{workPath}6-visualization/{ref}/graphs/*.regression.png"))
-            regressionPlot = regressionPlots[0]
+            regressionPlot = regressionPlots[0] if regressionPlots else ""
 
         if config.figGenerateGlobalDistributionHistogramsPlots.lower() == "on":
             histogramPlots = sorted(glob.glob(f"{workPath}6-visualization/{ref}/graphs/*.histogram.png"))
-            histogramPlot = histogramPlots[0]
+            histogramPlot = histogramPlots[0] if histogramPlots else ""
 
         break
 

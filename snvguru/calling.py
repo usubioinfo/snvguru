@@ -4,12 +4,12 @@
 from snvguru import util
 from snvguru import config
 from snvguru import logger
+import os
 import io
 import pandas as pd
 import numpy as np
 import glob 
 import pathlib
-import dask.dataframe as dd
 
 log = logger.logger
 baseDir = config.workPath + "/4-snvCalling"
@@ -150,6 +150,8 @@ def filterAS_StrandOddsRatio(sras):
         path = pathlib.Path(fullRef)
         ref = path.parent.name
         util.makeDirectory(f"{depthsDir}/{ref}")
+        if not os.path.exists(f"{fullRef}.fai"):
+            util.execCmd(f"{config.samtoolsPath} faidx {fullRef}")
         for sra in sras:
             run = sra[2]
             f = f"{run}_{config.alignmentSoftwarePathogen}"
@@ -157,6 +159,8 @@ def filterAS_StrandOddsRatio(sras):
             if len(files) == 0:
                 log.error(f"Sorted BAM file with the alignment for run with ID {run} against pathogen reference {ref} not found.")
                 util.stopProgram()
+            if not os.path.exists(f"{bamDir}/{ref}/{f}.bam.bai"):
+                util.execCmd(f"{config.samtoolsPath} index {bamDir}/{ref}/{f}.bam")
             cmd = f"{config.bcftoolsPath} mpileup{config.bcftools} -a FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP -O v -f {fullRef} -o {depthsDir}/{ref}/{run}.mpileup.vcf {bamDir}/{ref}/{f}.bam"
             util.runCommand(cmd, jobName="mpileup", jobs=jobs)
     util.waitForJobs(jobs)
@@ -167,29 +171,26 @@ def filterAS_StrandOddsRatio(sras):
             run = sra[2]
             log.info(f"Analyzing {run}...")
             mpileup = _readMpileupVcf(f"{depthsDir}/{ref}/{run}.mpileup.vcf")
-            mpileup = dd.from_pandas(mpileup, chunksize=1000)
+            if mpileup.empty:
+                continue
             mpileup["FORMAT2"] = mpileup["FORMAT2"].str.partition(":")[2].str.partition(":")[2].str.partition(":")[2]
             mpileup["ADF"] = mpileup["FORMAT2"].str.partition(":")[0]
-            mpileup["fwdRefDepth"] = dd.to_numeric(mpileup["ADF"].str.partition(",")[0])
-            mpileup["fwdAltDepth"] = dd.to_numeric(mpileup["ADF"].str.partition(",")[2].str.partition(",")[0])
+            mpileup["fwdRefDepth"] = pd.to_numeric(mpileup["ADF"].str.partition(",")[0], errors="coerce").fillna(0) + 1
+            mpileup["fwdAltDepth"] = pd.to_numeric(mpileup["ADF"].str.partition(",")[2].str.partition(",")[0], errors="coerce").fillna(0) + 1
             mpileup["FORMAT2"] = mpileup["FORMAT2"].str.partition(":")[2]
             mpileup["ADR"] = mpileup["FORMAT2"].str.partition(":")[0]
-            mpileup["revRefDepth"] = dd.to_numeric(mpileup["ADR"].str.partition(",")[0])
-            mpileup["revAltDepth"] = dd.to_numeric(mpileup["ADR"].str.partition(",")[2].str.partition(",")[0])
-            mpileup["fwdRefDepth"] = mpileup["fwdRefDepth"] + 1
-            mpileup["fwdAltDepth"] = mpileup["fwdAltDepth"] + 1
-            mpileup["revRefDepth"] = mpileup["revRefDepth"] + 1
-            mpileup["revAltDepth"] = mpileup["revAltDepth"] + 1
+            mpileup["revRefDepth"] = pd.to_numeric(mpileup["ADR"].str.partition(",")[0], errors="coerce").fillna(0) + 1
+            mpileup["revAltDepth"] = pd.to_numeric(mpileup["ADR"].str.partition(",")[2].str.partition(",")[0], errors="coerce").fillna(0) + 1
             mpileup["R"] = (mpileup["fwdRefDepth"] * mpileup["revAltDepth"]) / (mpileup["fwdAltDepth"] * mpileup["revRefDepth"])
-            mpileup["sym"] =  mpileup["R"] + (1 / mpileup["R"])
+            mpileup["sym"] = mpileup["R"] + (1 / mpileup["R"])
             mpileup["refRatio"] = mpileup[["fwdRefDepth", "revRefDepth"]].min(axis=1) / mpileup[["fwdRefDepth", "revRefDepth"]].max(axis=1)
             mpileup["altRatio"] = mpileup[["fwdAltDepth", "revAltDepth"]].min(axis=1) / mpileup[["fwdAltDepth", "revAltDepth"]].max(axis=1)
-            mpileup["SOR"] =  np.log(mpileup["sym"]) + np.log(mpileup["refRatio"]) - np.log(mpileup["altRatio"])
+            mpileup["SOR"] = np.log(mpileup["sym"]) + np.log(mpileup["refRatio"]) - np.log(mpileup["altRatio"])
             mpileup = mpileup[mpileup["SOR"] <= config.maxAS_StrandOddsRatio]
             mpileup = mpileup[["CHROM", "Position"]].drop_duplicates()
             if len(glob.glob(f"{depthsDir}/{ref}/{run}_filtered.hdf")) >= 1:
                 util.execCmd(f"rm {depthsDir}/{ref}/{run}_filtered.hdf")
-            mpileup.to_hdf(f"{depthsDir}/{ref}/{run}_filtered.hdf", key=run, index = False)
+            mpileup.to_hdf(f"{depthsDir}/{ref}/{run}_filtered.hdf", key=run, index=False)
 
 def _calculateFrequencyReditools2(row):
     """Calculates the frequency of the variant in
@@ -302,6 +303,9 @@ def _jacusaToSnpEff(path, run):
         path (str): Path of the VCF file.
         run (str): Run ID.
     """
+    if not os.path.exists(path):
+        log.error(f"JACUSA VCF file {path} not found.")
+        return
     util.execCmd(f"mv {path} {path}.pre")
     lines = []
     with open(path + ".pre", "r") as r:
@@ -312,21 +316,28 @@ def _jacusaToSnpEff(path, run):
         lines.extend([l for l in r])
     template =  "##fileformat=VCFv4.2\n"\
                 "{}"
-    df = pd.read_csv(
-        io.StringIO(''.join(lines)),
-        dtype={'#CHROM': str, 'POS': int, 'ID': str, 'REF': str, 'ALT': str,
-               'QUAL': str, 'FILTER': str, 'INFO': str},
-        sep='\t'
-    )
-    df["ALT"] = df["ALT"].str.split(",")
-    df = df.explode(["ALT"])
-    snpeff = df[['#CHROM', 'POS','ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO']]
+    if len(lines) == 0:
+        df = pd.DataFrame(columns=['#CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO'])
+    else:
+        df = pd.read_csv(
+            io.StringIO(''.join(lines)),
+            dtype={'#CHROM': str, 'POS': int, 'ID': str, 'REF': str, 'ALT': str,
+                   'QUAL': str, 'FILTER': str, 'INFO': str},
+            sep='\t'
+        )
+    if not df.empty and "ALT" in df.columns:
+        df["ALT"] = df["ALT"].astype(str).str.split(",")
+        df = df.explode(["ALT"])
+        snpeff = df[['#CHROM', 'POS','ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO']]
+    else:
+        snpeff = pd.DataFrame(columns=['#CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO'])
     p = pathlib.Path(path)
     with open(f"{p.parent}/{run}.jacusa.vcf", "w") as f:
         f.write(template.format(df.to_csv(index=False, sep="\t")))
     with open(f"{p.parent}/{run}.jacusa.presnpeff.vcf", "w") as f:
         f.write(template.format(snpeff.to_csv(index=False, sep="\t")))
-    util.execCmd(f"rm {path}.pre")
+    if os.path.exists(path + ".pre"):
+        os.remove(path + ".pre")
 
 def _readMpileupVcf(path):
     """It reads the given output VCF file of mpileup as a Pandas 

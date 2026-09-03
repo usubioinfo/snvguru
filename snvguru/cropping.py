@@ -6,6 +6,8 @@ from snvguru import config
 from snvguru import logger
 import glob
 import pathlib
+import os
+import shutil
 
 log = logger.logger
 qualityDir = config.workPath + "/1-quality"
@@ -102,6 +104,36 @@ def runTrimmomatic(sras):
         util.runCommand(cmd, jobName="trimmomatic", jobs=jobs)
     util.waitForJobs(jobs)
 
+import subprocess
+import urllib.request
+
+def _ensureTrimGalore():
+    """Checks if trim_galore works on the host system.
+    If it fails due to GLIBC incompatibility (e.g. on CentOS 7), it automatically
+    downloads and configures the standalone TrimGalore perl script from GitHub.
+    """
+    cmd = f"{config.trimGalorePath} --version"
+    res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    err = res.stderr.decode("utf-8")
+    out = res.stdout.decode("utf-8")
+    
+    if res.returncode != 0 and ("GLIBC" in err or "GLIBC" in out or "not found" in err or "not found" in out):
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        tools_dir = os.path.join(repo_root, "tools")
+        standalone_tg = os.path.join(tools_dir, "trim_galore")
+        if not os.path.exists(standalone_tg):
+            log.info("Host GLIBC compatibility issue detected with trim_galore. Automatically downloading standalone Trim Galore script...")
+            os.makedirs(tools_dir, exist_ok=True)
+            url = "https://raw.githubusercontent.com/FelixKrueger/TrimGalore/0.6.10/trim_galore"
+            try:
+                urllib.request.urlretrieve(url, standalone_tg)
+                os.chmod(standalone_tg, 0o755)
+            except Exception as e:
+                log.error(f"Failed to auto-download standalone trim_galore: {e}")
+                return
+        config.trimGalorePath = standalone_tg
+        log.info(f"Using standalone Trim Galore from {config.trimGalorePath}")
+
 def runTrimGalore(sras):
     """Crops the given runs using Trim Galore.
 
@@ -111,27 +143,60 @@ def runTrimGalore(sras):
             * Run type. "single" if single-end, "paired" if paired-end
             * Run ID  
     """
+    _ensureTrimGalore()
     util.makeDirectory(fastqDir)
     jobs = []
     for f in sras:
         filePaths = f[0]
-        fileNames = []
-        for fp in filePaths:
-            fileNames.append(pathlib.Path(fp).name)
-        fileStems = []
-        for fp in filePaths:
-            fileStems.append(pathlib.Path(fp).stem)
+        fileNames = [pathlib.Path(fp).name for fp in filePaths]
         runType = f[1]
-        runId = f[2]
         filesString = " and ".join(fileNames)
         log.info(f"Cropping {filesString}...")
         if runType == "single":
             cmd = f"{config.trimGalorePath} -o {fastqDir} --hardtrim5 {config.cropSize} {filePaths[0]}"
-            cmd += f"; mv {fastqDir}/{fileStems[0]}.{config.cropSize}bp_5prime.fq {fastqDir}/{runId}.fastq"
             util.runCommand(cmd, jobName="trimgalore", jobs=jobs)
         else:
             cmd = f"{config.trimGalorePath} -o {fastqDir} --paired --hardtrim5 {config.cropSize} {filePaths[0]} {filePaths[1]}"
-            cmd += f"; mv {fastqDir}/{fileStems[0]}.{config.cropSize}bp_5prime.fq {fastqDir}/{runId}_1.fastq"
-            cmd += f"; mv {fastqDir}/{fileStems[1]}.{config.cropSize}bp_5prime.fq {fastqDir}/{runId}_2.fastq"
             util.runCommand(cmd, jobName="trimgalore", jobs=jobs)
     util.waitForJobs(jobs)
+
+    # Rename Trim Galore output files to standard {runId}.fastq / {runId}_1.fastq naming convention
+    for f in sras:
+        filePaths = f[0]
+        fileStems = [pathlib.Path(fp).stem for fp in filePaths]
+        runType = f[1]
+        runId = f[2]
+        if runType == "single":
+            candidates = [
+                f"{fastqDir}/{fileStems[0]}.{config.cropSize}bp_5prime_trimmed.fq",
+                f"{fastqDir}/{fileStems[0]}.{config.cropSize}bp_5prime.fq",
+                f"{fastqDir}/{fileStems[0]}_trimmed.fq",
+                f"{fastqDir}/{fileStems[0]}.fq",
+            ]
+            dest = f"{fastqDir}/{runId}.fastq"
+            for cand in candidates:
+                if os.path.exists(cand):
+                    shutil.move(cand, dest)
+                    break
+        else:
+            candidates_1 = [
+                f"{fastqDir}/{fileStems[0]}.{config.cropSize}bp_5prime_val_1.fq",
+                f"{fastqDir}/{fileStems[0]}.{config.cropSize}bp_5prime.fq",
+                f"{fastqDir}/{fileStems[0]}_val_1.fq",
+            ]
+            dest_1 = f"{fastqDir}/{runId}_1.fastq"
+            for cand in candidates_1:
+                if os.path.exists(cand):
+                    shutil.move(cand, dest_1)
+                    break
+
+            candidates_2 = [
+                f"{fastqDir}/{fileStems[1]}.{config.cropSize}bp_5prime_val_2.fq",
+                f"{fastqDir}/{fileStems[1]}.{config.cropSize}bp_5prime.fq",
+                f"{fastqDir}/{fileStems[1]}_val_2.fq",
+            ]
+            dest_2 = f"{fastqDir}/{runId}_2.fastq"
+            for cand in candidates_2:
+                if os.path.exists(cand):
+                    shutil.move(cand, dest_2)
+                    break

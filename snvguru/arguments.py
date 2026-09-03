@@ -40,6 +40,8 @@ def _getParser():
     parser.add_argument("-ht", "--slurmTime", metavar="HOURS", dest="slurmTime", type=int, help="SLURM time allocation in hours per job")
     parser.add_argument("-hm", "--slurmMem", metavar="MEMORY", dest="slurmMem", type=str, help="SLURM memory allocation per job. For example, '8G' or '8000M'")
     parser.add_argument("-hc", "--slurmCpus", metavar="CPUS", dest="slurmCpus", type=int, help="SLURM CPUs per job")
+    parser.add_argument("-hp", "--slurmPartition", metavar="PARTITION", dest="slurmPartition", type=str, help="SLURM partition")
+    parser.add_argument("-hn", "--slurmNodelist", metavar="NODES", dest="slurmNodelist", type=str, help="SLURM specific node(s) (e.g. 'node1' or 'node1,node2')")
     parser.add_argument("-hr", "--referenceHostPath", metavar="PATH", dest="referenceHostPath", help="path to reference host genome file")
     parser.add_argument("-prf", "--referencePathogenGenomePaths", metavar="PATH", dest="referencePathogenGenomePaths", help="paths to reference pathogen genome FASTA files (comma-separated)")
     parser.add_argument("-prg", "--referencePathogenGenesPaths", metavar="PATH", dest="referencePathogenGenesPaths", help="paths to reference pathogen genes files (comma-separated). Accepted extensions: gff, gff3, gtf, gbk, gbff, gb, refseq.")
@@ -186,6 +188,10 @@ def parseArgs():
         config.slurmMem = args.slurmMem
     if args.slurmCpus != None:
         config.slurmCpus = args.slurmCpus
+    if args.slurmPartition != None:
+        config.slurmPartition = args.slurmPartition
+    if args.slurmNodelist != None:
+        config.slurmNodelist = args.slurmNodelist
     if args.alignmentSoftwareHost != None:
         config.alignmentSoftwareHost = args.alignmentSoftwareHost
     if args.alignmentSoftwarePathogen != None:

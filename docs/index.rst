@@ -87,6 +87,13 @@ In the configuration folder (``config/`` or your folder of choice using the ``-c
       * ``minimap2``: Minimap2 is suggested for long DNA or RNA-seq reads. 
       * ``gmap``: GMAP is suggested for long cDNA reads.
       * ``magicblast``: Magic-BLAST can be used for any type of read. 
+* SLURM Execution Options:
+   * ``slurm`` (``-hs``): Run pipeline steps as SLURM batch jobs.
+   * ``slurmTime`` (``-ht``): Time allocation in hours per job (e.g. ``72``).
+   * ``slurmMem`` (``-hm``): Memory allocation per job (e.g. ``64G`` or ``8000M``).
+   * ``slurmCpus`` (``-hc``): Number of CPUs/threads per job (e.g. ``16``).
+   * ``slurmPartition`` (``-hp``): SLURM partition/queue to submit jobs to (e.g. ``batch`` or ``gpu``).
+   * ``slurmNodelist`` (``-hn``): Specific SLURM node(s) to target (e.g. ``node01`` or ``node01,node02``).
 
 
 ==========================================================

@@ -66,6 +66,14 @@ In the configuration folder (`config/` or your folder of choice using the `-c` a
       * `gmap`: GMAP is suggested for long cDNA reads.
       * `magicblast`: Magic-BLAST can be used for any type of read. 
 
+* SLURM Execution Options:
+   * `slurm` (`-hs`): Run pipeline steps as SLURM batch jobs.
+   * `slurmTime` (`-ht`): Time allocation in hours per job (e.g. `72`).
+   * `slurmMem` (`-hm`): Memory allocation per job (e.g. `64G` or `8000M`).
+   * `slurmCpus` (`-hc`): Number of CPUs/threads per job (e.g. `16`).
+   * `slurmPartition` (`-hp`): SLURM partition/queue to submit jobs to (e.g. `batch` or `gpu`).
+   * `slurmNodelist` (`-hn`): Specific SLURM node(s) to target (e.g. `node01` or `node01,node02`).
+
 ## Do you have a sample report? How to interpret the figures?
 
 You can check <a href="https://bioinfo.usu.edu/snvguru/influenzaA/analysis_report.html" target="_blank">this sample report</a> for *influenza A*, or <a href="https://bioinfo.usu.edu/snvguru/mtuberculosis/analysis_report.html" target="_blank">this one</a> for *Mycobacterium tuberculosis*, or <a href="https://bioinfo.usu.edu/snvguru/hcapsulatum/analysis_report.html" target="_blank">this other one</a> for *Histoplasma capsulatum*. 

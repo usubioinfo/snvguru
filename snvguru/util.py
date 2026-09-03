@@ -70,14 +70,25 @@ def runSlurm(jobName, command, dep=""):
         str: Job ID.
     """
     try:
+        makeDirectory(f"{config.workPath}/logs/slurm")
+        depStr = ""
         if dep != "":
-            dep = f'--dependency=afterok:{dep} --kill-on-invalid-dep=yes'
-        sbatchCmd = f"sbatch -J {jobName} -o {config.workPath}/logs/slurm/{jobName}-%j.out -e {config.workPath}/logs/slurm/{jobName}-%j.err -t {config.slurmTime}:00:00  --mem={config.slurmMem} --cpus-per-task={config.slurmCpus} --wrap='{command}' {dep}"
+            depStr = f'--dependency=afterok:{dep} --kill-on-invalid-dep=yes'
+        partitionStr = f"-p {config.slurmPartition}" if config.slurmPartition else ""
+        nodeStr = f"-w {config.slurmNodelist}" if config.slurmNodelist else ""
+        sys_bin = os.path.dirname(sys.executable)
+        wrapped_cmd = f"export PATH={sys_bin}:$PATH; {command}"
+        sbatchCmd = f"sbatch {partitionStr} {nodeStr} -J {jobName} -o {config.workPath}/logs/slurm/{jobName}-%j.out -e {config.workPath}/logs/slurm/{jobName}-%j.err -t {config.slurmTime}:00:00  --mem={config.slurmMem} --cpus-per-task={config.slurmCpus} --wrap=\"{wrapped_cmd}\" {depStr}"
         output = subprocess.getoutput(sbatchCmd)
-        jobId = output.split(' ')[-1].strip()
-        log.info(f"===> Job {jobId}: {command}")
+        if "Submitted batch job" in output:
+            jobId = output.split(' ')[-1].strip()
+            log.info(f"===> Job {jobId}: {command}")
+        else:
+            log.error(f"SLURM submission failed: {output}")
+            jobId = ""
     except Exception as e:
         log.error(f"Job submission failed: {e}")
+        jobId = ""
     return jobId
 
 def _checkStatus(jobId):
@@ -114,6 +125,9 @@ def execCmd(cmd, file=None, mode="w"):
     Returns:
         str/tuple(str, str): Empty string if the output is written to a file. Standard output and error output if no file is given.
     """
+    sys_bin = os.path.dirname(sys.executable)
+    env = os.environ.copy()
+    env["PATH"] = f"{sys_bin}:{env.get('PATH', '')}"
     if file != None:
         strOut = ""
         if mode == "w": 
@@ -122,11 +136,11 @@ def execCmd(cmd, file=None, mode="w"):
             strOut = " >> " + file
         log.info(f"===> {cmd}{strOut}")
         with open(file, mode) as f:
-            subprocess.run(cmd, shell=True, stdout=f)
+            subprocess.run(cmd, shell=True, stdout=f, env=env)
             return ""
     else:
         log.info(f"===> {cmd}")
-        output = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
         outString = output.stdout.decode("utf-8")
         errString = output.stderr.decode("utf-8")
         # print(outString)
@@ -225,9 +239,11 @@ def sync_annotation_to_fasta(fasta_file, annotation_file, output_file):
 
     Args:
         fasta_file (str): Path to the reference genome FASTA file. The chromosome IDs in this
-                        file are treated as canonical.
+            file are treated as canonical.
+
         annotation_file (str): Path to the annotation file. Supported formats are GenBank (.gb, .gbk),
-                            GFF/GFF3 (.gff, .gff3), or GTF (.gtf).
+            GFF/GFF3 (.gff, .gff3), or GTF (.gtf).
+
         output_file (str): Path where the corrected annotation file will be written.
     """
     fasta_ids = _get_fasta_ids(fasta_file)

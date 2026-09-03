@@ -5,6 +5,7 @@ output.
 from snvguru import util
 from snvguru import config
 from snvguru import logger
+import os
 import pandas as pd
 import io
 import numpy as np
@@ -18,7 +19,6 @@ from matplotlib import gridspec
 import glob
 import pathlib
 import warnings
-import dask.dataframe as dd
 import math
 import multiprocessing
 
@@ -26,6 +26,7 @@ pd.options.mode.chained_assignment = None
 plt.rcParams.update({'figure.max_open_warning': 0})
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
+warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
 numProcesses = max(1, multiprocessing.cpu_count())
 
@@ -111,9 +112,8 @@ def mergeCalling(sras):
             if len(files) == 0:
                 log.error(f"AS_StrandOddsRatio filter for run with ID {run} against pathogen reference {ref} not found.")
                 util.stopProgram()
-            sor = dd.read_hdf(f"{depthsDir}/{ref}/{run}_filtered.hdf", key=run, chunksize=10000)
-            sor["Concat"] = sor["CHROM"] + "||" + sor["Position"].astype(str)
-            sor = sor.set_index("Concat")
+            sor = pd.read_hdf(f"{depthsDir}/{ref}/{run}_filtered.hdf", key=run)
+            sor = sor[["CHROM", "Position"]].drop_duplicates()
             if config.callingSoftware in ["reditools", "both"]:
                 files = glob.glob(f"{reditoolsDir}/{ref}/{run}.reditools.txt")
                 if len(files) == 0:
@@ -145,13 +145,7 @@ def mergeCalling(sras):
                 reditoolsRun["Sample"] = run
                 globalReditools = pd.concat([globalReditools, reditoolsRun], ignore_index=True)
                 
-                reditools["Concat"] = reditools["CHROM"] + "||" + reditools["Position"].astype(str)
-                reditools = reditools.set_index("Concat") 
-                reditools = dd.from_pandas(reditools, chunksize=10000)
-                reditools = dd.merge(reditools, sor[[]], left_index=True, right_index=True, how="inner")
-                reditools = reditools.compute()
-                reditools = reditools.reset_index()
-                reditools.drop(columns=["Concat"])
+                reditools = reditools.merge(sor, on=["CHROM", "Position"], how="inner")
 
             if config.callingSoftware in ["jacusa", "both"]:
                 files = glob.glob(f"{jacusaDir}/{ref}/{run}.jacusa.vcf")
@@ -193,13 +187,7 @@ def mergeCalling(sras):
                 jacusaRun["Sample"] = run
                 globalJacusa = pd.concat([globalJacusa, jacusaRun])
                 
-                jacusa["Concat"] = jacusa["CHROM"] + "||" + jacusa["Position"].astype(str)
-                jacusa = jacusa.set_index("Concat") 
-                jacusa = dd.from_pandas(jacusa, chunksize=10000)
-                jacusa = dd.merge(jacusa, sor[[]], left_index=True, right_index=True, how="inner")
-                jacusa = jacusa.compute()
-                jacusa = jacusa.reset_index()
-                jacusa.drop(columns=["Concat"])
+                jacusa = jacusa.merge(sor, on=["CHROM", "Position"], how="inner")
 
             if config.callingSoftware == "both":
                 # recJacusa = recJacusa.rename(columns={"A": "JacA", "C": "JacC", "G": "JacG", "T": "JacT", "TotalReads": "JacTotalReads", "RefReads": "JacRefReads", "AltReads": "JacAltReads", "Frequency": "JacFrequency"})
@@ -241,9 +229,9 @@ def mergeCalling(sras):
                 jacusa = jacusa.assign(Mutation=lambda row: row.Reference + row.Alt)
             main = main.assign(Mutation=lambda row: row.Reference + row.Alt)
 
-            reditools.to_hdf(f"{resultsDir}/{ref}/{run}/reditools.h5", "key")
-            jacusa.to_hdf(f"{resultsDir}/{ref}/{run}/jacusa.h5", "key")
-            main.to_hdf(f"{resultsDir}/{ref}/{run}/common.h5", "key")
+            reditools.to_hdf(f"{resultsDir}/{ref}/{run}/reditools.h5", key="key")
+            jacusa.to_hdf(f"{resultsDir}/{ref}/{run}/jacusa.h5", key="key")
+            main.to_hdf(f"{resultsDir}/{ref}/{run}/common.h5", key="key")
 
         globalMain = globalMain.drop_duplicates()
         positions = len(globalMain[["CHROM", "Position"]].drop_duplicates())
@@ -259,7 +247,7 @@ def mergeCalling(sras):
             globalJacusa.to_csv(f"{resultsDir}/{ref}/csv/globalJacusa.csv", index=False)
         if len(glob.glob(f"{resultsDir}/{ref}/csv/globalCommon.csv")) > 0:
             util.execCmd(f"rm {resultsDir}/{ref}/csv/globalCommon.csv")
-        globalMain = globalMain.drop(columns="Concat")
+        globalMain = globalMain.drop(columns="Concat", errors="ignore")
         globalMain.to_csv(f"{resultsDir}/{ref}/csv/globalCommon.csv", index=False)
 
         globalMain.loc[:, ["Mutation"]] = globalMain["Reference"] + globalMain["Alt"]
@@ -268,9 +256,9 @@ def mergeCalling(sras):
             globalReditools.loc[:, ["Mutation"]] = globalReditools["Reference"] + globalReditools["Alt"]
             globalJacusa.loc[:, ["Mutation"]] = globalJacusa["Reference"] + globalJacusa["Alt"]
 
-        globalReditools.to_hdf(f"{resultsDir}/{ref}/reditools.h5", "key")
-        globalJacusa.to_hdf(f"{resultsDir}/{ref}/jacusa.h5", "key")
-        globalMain.to_hdf(f"{resultsDir}/{ref}/common.h5", "key")
+        globalReditools.to_hdf(f"{resultsDir}/{ref}/reditools.h5", key="key")
+        globalJacusa.to_hdf(f"{resultsDir}/{ref}/jacusa.h5", key="key")
+        globalMain.to_hdf(f"{resultsDir}/{ref}/common.h5", key="key")
 
 
 def generateGraphs(sras):
@@ -298,9 +286,9 @@ def generateGraphs(sras):
             util.makeDirectory(f"{resultsDir}/{ref}/{run}/graphs/geneBarPlot")
             util.makeDirectory(f"{resultsDir}/{ref}/{run}/graphs/geneBoxPlot")
 
-            reditools = pd.read_hdf(f"{resultsDir}/{ref}/{run}/reditools.h5", "key")
-            jacusa = pd.read_hdf(f"{resultsDir}/{ref}/{run}/jacusa.h5", "key")
-            main = pd.read_hdf(f"{resultsDir}/{ref}/{run}/common.h5", "key")
+            reditools = pd.read_hdf(f"{resultsDir}/{ref}/{run}/reditools.h5", key="key")
+            jacusa = pd.read_hdf(f"{resultsDir}/{ref}/{run}/jacusa.h5", key="key")
+            main = pd.read_hdf(f"{resultsDir}/{ref}/{run}/common.h5", key="key")
             if config.figGenerateMutationCountBarPlotsPerRun.lower() == "on":
                 if config.callingSoftware == "both":
                     _graphMutationCountBarPlot(reditools, ref, "reditools", run)
@@ -325,9 +313,9 @@ def generateGraphs(sras):
                     _graphHeatmapFrequencyPerMutation(main, ref, run)
 
         log.info(f"Generating global graphs for {ref}...")
-        globalReditools = pd.read_hdf(f"{resultsDir}/{ref}/reditools.h5", "key")
-        globalJacusa = pd.read_hdf(f"{resultsDir}/{ref}/jacusa.h5", "key")
-        globalMain = pd.read_hdf(f"{resultsDir}/{ref}/common.h5", "key")
+        globalReditools = pd.read_hdf(f"{resultsDir}/{ref}/reditools.h5", key="key")
+        globalJacusa = pd.read_hdf(f"{resultsDir}/{ref}/jacusa.h5", key="key")
+        globalMain = pd.read_hdf(f"{resultsDir}/{ref}/common.h5", key="key")
     
         if config.figGenerateGlobalMutationCountBarPlots.lower() == "on":
             if config.callingSoftware == "both":
@@ -398,16 +386,16 @@ def runSnpEff(sras):
             f.write(f"{ref}.genome : {ref}\n")
     jobs = []
     for fullRef, genesFormat in zip(config.pathogenReferenceGenomePaths, config.pathogenReferenceGenesFormats):
-        util.makeDirectory(f"{snpeffDir}/{ref}")
         path = pathlib.Path(fullRef)
-        ref = path.parent.name 
-        util.execCmd(f"{config.snpEffPath} build -{genesFormat} -c {config.workPath}/snpEff.config -v {ref}")
+        ref = path.parent.name
+        util.makeDirectory(f"{snpeffDir}/{ref}")
+        util.execCmd(f"{config.snpEffPath} build -noCheckCds -noCheckProtein -nodownload -{genesFormat} -c {config.workPath}/snpEff.config -v {ref}")
         for sra in sras:
             run = sra[2]
             if config.callingSoftware in ["reditools", "both"]:
-                util.runCommand(f"{config.snpEffPath} -c {config.workPath}/snpEff.config {ref} {reditoolsDir}/{ref}/{run}.reditools.presnpeff.vcf", outFile=f"{snpeffDir}/{ref}/{run}.snpeff.reditools.vcf", jobs=jobs, jobName="snpeff")
+                util.runCommand(f"{config.snpEffPath} -nodownload -c {config.workPath}/snpEff.config {ref} {reditoolsDir}/{ref}/{run}.reditools.presnpeff.vcf", outFile=f"{snpeffDir}/{ref}/{run}.snpeff.reditools.vcf", jobs=jobs, jobName="snpeff")
             if config.callingSoftware in ["jacusa", "both"]:
-                util.runCommand(f"{config.snpEffPath} -c {config.workPath}/snpEff.config {ref} {jacusaDir}/{ref}/{run}.jacusa.presnpeff.vcf", outFile=f"{snpeffDir}/{ref}/{run}.snpeff.jacusa.vcf", jobs=jobs, jobName="snpeff")
+                util.runCommand(f"{config.snpEffPath} -nodownload -c {config.workPath}/snpEff.config {ref} {jacusaDir}/{ref}/{run}.jacusa.presnpeff.vcf", outFile=f"{snpeffDir}/{ref}/{run}.snpeff.jacusa.vcf", jobs=jobs, jobName="snpeff")
     util.waitForJobs(jobs)
 
 def _filterMutationCt(row, min):
@@ -514,22 +502,30 @@ def _readSnpEffVcf(path):
     Returns:
         DataFrame: The data read from the JACUSA VCF file.
     """
-    lines = []
-    counter = 1
+    if not os.path.exists(path) or os.path.getsize(path) == 0:
+        return pd.DataFrame(columns=["CHROM", "Position", "ALT", "Type", "AAVar", "GeneName", "GeneID"])
+    counter = 0
+    has_chrom = False
     with open(path, 'r') as f:
-        start = False
         for line in f:
             counter += 1
             if line.startswith("#CHROM"):
-                start = True
+                has_chrom = True
                 break
+    if not has_chrom:
+        return pd.DataFrame(columns=["CHROM", "Position", "ALT", "Type", "AAVar", "GeneName", "GeneID"])
     csv = pd.read_csv(
         path,
         names = ["CHROM", "Position", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO"],
         dtype={'CHROM': str, 'Position': int, 'ID': str, 'REF': str, 'ALT': str, 'QUAL': str, 'FILTER': str, 'INFO': str},
         delimiter="\t", skiprows=counter
     )
-    csv["Type"], csv["AAVar"], csv["GeneName"], csv["GeneID"] = zip(*csv.apply(_getSnpeffTypeAAVarGene, axis=1))
+    if csv.empty:
+        return pd.DataFrame(columns=["CHROM", "Position", "ALT", "Type", "AAVar", "GeneName", "GeneID"])
+    res = list(csv.apply(_getSnpeffTypeAAVarGene, axis=1))
+    if not res:
+        return pd.DataFrame(columns=["CHROM", "Position", "ALT", "Type", "AAVar", "GeneName", "GeneID"])
+    csv["Type"], csv["AAVar"], csv["GeneName"], csv["GeneID"] = zip(*res)
     csv = csv.drop(columns=['ID', 'REF', 'QUAL', 'FILTER', 'INFO'])
     return csv
 
@@ -1050,7 +1046,8 @@ def _graphFrequencyPerMutation(df, ref, source=""):
     ax.set_title(f"SNV frequency (%) for {ref}")
     ax.set_xlabel("Mutation")
     ax.set_ylabel("SNV frequency (%)")
-    ax.legend_.remove()
+    if ax.legend_ is not None:
+        ax.legend_.remove()
     fig = ax.get_figure()
     fig.set_size_inches(width, height)
     fig.savefig(f"{resultsDir}/{ref}/graphs/{source}.frequencyPerMutation.png", dpi=config.figDPI, bbox_inches="tight") 
@@ -1130,7 +1127,8 @@ def _graphFrequencyPerRun(df, ref, source=""):
     ax.set_xlabel("Sample")
     ax.set_ylabel("SNV frequency (%)")
     ax.tick_params(axis="x", labelrotation=45)
-    ax.legend_.remove()
+    if ax.legend_ is not None:
+        ax.legend_.remove()
     fig = ax.get_figure()
     fig.set_size_inches(width, len(df["Sample"].unique()) * barHeight)
     fig.savefig(f"{resultsDir}/{ref}/graphs/{source}.frequencyPerRun.png", dpi=config.figDPI, bbox_inches="tight") 
@@ -1169,8 +1167,10 @@ def _graphHistograms(df, ref, source=""):
             for bin in counts[key]:
                 counts[key][bin] *= -1
 
-        plt.figure()
-        fig, axs = plt.subplots(3, 2)
+        height = config.figDistributionHeight
+        width = config.figDistributionWidth
+        numberOfYTicks = config.figDistributionTicksY
+        fig, axs = plt.subplots(3, 2, figsize=(width, height))
         pairs = [
             ("AG", "TC", "#6f3777", "#bf5fcc", axs[0,1]), 
             ("CT", "GA", "#774f1b", "#cc882f", axs[2,1]),
@@ -1180,12 +1180,6 @@ def _graphHistograms(df, ref, source=""):
             ("CG", "GC", "#984533", "#ed6b50", axs[2,0])
         ] 
         for pair in pairs:
-            fig.tight_layout(pad=1)
-            height = config.figDistributionHeight
-            fig.set_figheight(height)
-            width = config.figDistributionWidth
-            fig.set_figwidth(width)
-            numberOfYTicks = config.figDistributionTicksY
             mut1 = pair[0]
             mut2 = pair[1]
             color1 = pair[2]
@@ -1206,7 +1200,10 @@ def _graphHistograms(df, ref, source=""):
             ax.set_yticklabels([str(abs(y)) for y in ax.get_yticks()])
             ax.set_ylabel('SNV count')
 
-        plt.savefig(f"{resultsDir}/{ref}/graphs/{chrom}.histogram.png", dpi=config.figDPI)
+        fig.tight_layout(pad=1)
+        plt.savefig(f"{resultsDir}/{ref}/graphs/{chrom}.histogram.png", dpi=config.figDPI, bbox_inches='tight')
+        plt.clf()
+        plt.close(fig)
 
 def _graphRegression(df, ref, source=""):
     """It plots a regression graph that compares the total reads
@@ -1217,57 +1214,73 @@ def _graphRegression(df, ref, source=""):
         ref (_type_): _description_
         source (str, optional): _description_. Defaults to "".
     """
+    if df.empty or len(df) == 0:
+        return
     height = config.figRegressionHeight
     width = config.figRegressionWidth
     for chrom in df.CHROM.unique():
+        subDf = df[df.CHROM == chrom][["TotalReads", "AltReads"]].dropna()
+        if subDf.empty or len(subDf) == 0:
+            continue
         fig, ax = plt.subplots(figsize=(width, height))
-        sns.regplot(ax=ax, x="TotalReads", y="AltReads", data=df[df.CHROM == chrom][["TotalReads", "AltReads"]], scatter_kws={"s": 100})
+        sns.regplot(ax=ax, x="TotalReads", y="AltReads", data=subDf, scatter_kws={"s": 100})
         ax.set_xlabel('Total reads', fontsize=25)
         ax.set_ylabel('Alternative reads', fontsize=25)
-
-    plt.savefig(f"{resultsDir}/{ref}/graphs/{chrom}.regression.png", dpi=config.figDPI)
+        plt.savefig(f"{resultsDir}/{ref}/graphs/{chrom}.regression.png", dpi=config.figDPI)
+        plt.clf()
+        plt.close(fig)
 
 def _aggregateByPositionPerMutation(group):
-    genes = ', '.join(group['GeneName'].unique())
-    gene_starts = group['GenePos'].min(), group['GenePos'].max()
-    result = pd.Series({'GeneName': genes, 'GenePosMin': gene_starts[0], 'GenePosMax': gene_starts[1]})
-    result = pd.concat([result, group.iloc[0, 1:1]], axis=0)
-    result = pd.concat([result, group.iloc[0, 3:-1]], axis=0)
-    return result
+    genes = ', '.join(str(g) for g in group['GeneName'].dropna().unique() if str(g).strip() != "")
+    pos_min = group['GenePos'].min() if 'GenePos' in group.columns and pd.notna(group['GenePos'].min()) else (group['Position'].min() if 'Position' in group.columns else 0)
+    pos_max = group['GenePos'].max() if 'GenePos' in group.columns and pd.notna(group['GenePos'].max()) else (group['Position'].max() if 'Position' in group.columns else 0)
+    sample = group['Sample'].iloc[0] if 'Sample' in group.columns and len(group['Sample']) > 0 else ""
+    data = {
+        'GeneName': genes,
+        'GenePosMin': pos_min,
+        'GenePosMax': pos_max,
+        'Sample': sample
+    }
+    mutations = ["AC", "AG", "AT", "CA", "CG", "CT", "GA", "GC", "GT", "TA", "TC", "TG"]
+    for m in mutations:
+        if m in group.columns:
+            data[m] = group[m].sum()
+        else:
+            data[m] = 0.0
+    return pd.Series(data)
 
 def _aggregateByPositionPerRun(group):
-    genes = ', '.join(group['GeneName'].unique())
-    gene_starts = group['GenePos'].min(), group['GenePos'].max()
-    result = pd.Series({'GeneName': genes, 'GenePosMin': gene_starts[0], 'GenePosMax': gene_starts[1]})
+    genes = ', '.join(str(g) for g in group['GeneName'].dropna().unique() if str(g).strip() != "")
+    pos_min = group['GenePos'].min() if 'GenePos' in group.columns and pd.notna(group['GenePos'].min()) else (group['Position'].min() if 'Position' in group.columns else 0)
+    pos_max = group['GenePos'].max() if 'GenePos' in group.columns and pd.notna(group['GenePos'].max()) else (group['Position'].max() if 'Position' in group.columns else 0)
+    result = pd.Series({'GeneName': genes, 'GenePosMin': pos_min, 'GenePosMax': pos_max})
     return result
 
-def _graphCircosFrequencyPerMutation_plotGroup(df, chrom, group, mutations, maxFreq, mutationFontSize, colorBarFontSize, colorBarTickSize, pltSize, color, geneFontSize, titleFontSize, blankDegrees, centerSize, positionFontSize, cm, ref, run):
+def _graphCircosFrequencyPerMutation_plotGroup(dfGroup, chrom, group, mutations, maxFreq, mutationFontSize, colorBarFontSize, colorBarTickSize, pltSize, color, geneFontSize, titleFontSize, blankDegrees, centerSize, positionFontSize, cm, ref, run):
     fig, ax = plt.subplots()
     ax.axis("equal")
+    pos_max = dfGroup["Position"].max() if len(dfGroup) > 0 and pd.notna(dfGroup["Position"].max()) else 0
     for i in range(len(mutations)):
-        dfTemp = []    
         mutation = mutations[i]
-        dfTemp.append(df.loc[(df["Mutation"] == mutation) & (df["Group"] == group) & (df["CHROM"] == chrom), :])
-        dfTemp = pd.concat(dfTemp)
-        dfTemp = dfTemp.drop_duplicates().reset_index()
+        dfTemp = dfGroup.loc[dfGroup["Mutation"] == mutation, :].copy()
+        if "index" in dfTemp.columns:
+            dfTemp = dfTemp.drop(columns=["index"])
+        dfTemp = dfTemp.drop_duplicates().reset_index(drop=True)
         dfTemp = dfTemp.groupby(["CHROM", "Position", "GeneName", "GenePosMin", "GenePosMax", "Sample"]).sum().reset_index()
-        dfTemp["Degree"] = (360 - blankDegrees) / len(dfTemp)
+        dfTemp["Degree"] = (360 - blankDegrees) / len(dfTemp) if len(dfTemp) > 0 else 1.0
         dfTemp = pd.concat([dfTemp, 
             pd.DataFrame([{"CHROM": "", "Position": "", "GeneName": "", 
-                            "GenePosMin": (df["Position"].max() + 1), 
-                            "GenePosMax": (df["Position"].max() + 1), 
+                            "GenePosMin": (pos_max + 1), 
+                            "GenePosMax": (pos_max + 1), 
                             "Sample": "", "Mutation": "",
                             "Frequency": 0.0, "Degree": blankDegrees}])], 
             ignore_index=True)
-        dfTemp["Intensity"] = (((dfTemp["Frequency"]/maxFreq)**0.5)*255).astype(int).apply(hex)
-        dfTemp["Intensity"] = dfTemp["Intensity"].str.partition("x")[2]
-        dfTemp["Color"] = color
-        dfTemp["Color"] = dfTemp["Color"].mask(dfTemp["Intensity"].str.len() == 2, color + dfTemp["Intensity"])
-        dfTemp["Color"] = dfTemp["Color"].mask(dfTemp["Intensity"].str.len() != 2, color + "0" + dfTemp["Intensity"])
+        vals = np.clip((((dfTemp["Frequency"] / maxFreq).clip(0, 1) ** 0.5) * 255).astype(int), 0, 255)
+        dfTemp["Color"] = [f"{color}{v:02x}" for v in vals]
         shift = i // 3 * 1/3
         radius = pltSize - (pltSize - centerSize)/len(mutations) * i - shift
         ax.text(-0.2, radius - (pltSize - centerSize)/len(mutations)/2, mutations[i], style='italic', ha='right', va='center', fontsize=mutationFontSize)
-        dfTemp = dfTemp.drop(columns=["Mutation", "Intensity"])
+        dfTemp = dfTemp.drop(columns=["Mutation"])
         wedges, texts = ax.pie(list(dfTemp["Degree"]),               
                             radius=radius, 
                             counterclock=False, startangle=-270,
@@ -1317,36 +1330,34 @@ def _graphCircosFrequencyPerMutation_plotGroup(df, chrom, group, mutations, maxF
     fileName = f"{chrom}_{int(group)}"
     fig.savefig(f"{resultsDir}/{ref}/{run}/graphs/circos/{fileName}.png", bbox_inches='tight')
     plt.clf()
+    plt.close(fig)
 
     with open(f"{resultsDir}/{ref}/{run}/graphs/circos/_groups.txt", "a") as f:
         for gene in genes["GeneName"].unique():
-            if gene.strip() != "":
-                f.write("\n" + chrom + "\t" + gene + "\t" + str(int(group)))
+            if str(gene).strip() != "":
+                f.write("\n" + str(chrom) + "\t" + str(gene) + "\t" + str(int(group)))
 
-def _graphCircosFrequencyPerMutation_plotGeneGroup(df, chrom, gene, group, mutations, maxFreq, mutationFontSize, colorBarFontSize, colorBarTickSize, pltSize, color, titleFontSize, blankDegrees, centerSize, positionFontSize, cm, ref, run):
+def _graphCircosFrequencyPerMutation_plotGeneGroup(dfGroup, chrom, gene, group, mutations, maxFreq, mutationFontSize, colorBarFontSize, colorBarTickSize, pltSize, color, titleFontSize, blankDegrees, centerSize, positionFontSize, cm, ref, run):
     fig, ax = plt.subplots()
     ax.axis("equal")
     for i in range(len(mutations)):
-        dfTemp = []    
         mutation = mutations[i]
-        dfTemp.append(df.loc[(df["Mutation"] == mutation) & (df["GeneName"] == gene) & (df["Group"] == group) & (df["CHROM"] == chrom), :])
-        dfTemp = pd.concat(dfTemp)
-        dfTemp = dfTemp.drop_duplicates().reset_index().drop(columns=["index"])
+        dfTemp = dfGroup.loc[dfGroup["Mutation"] == mutation, :].copy()
+        if "index" in dfTemp.columns:
+            dfTemp = dfTemp.drop(columns=["index"])
+        dfTemp = dfTemp.drop_duplicates().reset_index(drop=True)
         dfTemp = dfTemp.groupby(["CHROM", "Position", "GeneName", "Sample"]).sum().reset_index()
-        dfTemp["Degree"] = (360 - blankDegrees) / len(dfTemp)
+        dfTemp["Degree"] = (360 - blankDegrees) / len(dfTemp) if len(dfTemp) > 0 else 1.0
         dfTemp = pd.concat([dfTemp, 
             pd.DataFrame([{"CHROM": "", "Position": "", "GeneName": "", "Sample": "", "Mutation": "",
                             "Frequency": 0.0, "Degree": blankDegrees}])], 
             ignore_index=True)
-        dfTemp["Intensity"] = (((dfTemp["Frequency"]/maxFreq)**0.5)*255).astype(int).apply(hex)
-        dfTemp["Intensity"] = dfTemp["Intensity"].str.partition("x")[2]
-        dfTemp["Color"] = color
-        dfTemp["Color"] = dfTemp["Color"].mask(dfTemp["Intensity"].str.len() == 2, color + dfTemp["Intensity"])
-        dfTemp["Color"] = dfTemp["Color"].mask(dfTemp["Intensity"].str.len() != 2, color + "0" + dfTemp["Intensity"])
+        vals = np.clip((((dfTemp["Frequency"] / maxFreq).clip(0, 1) ** 0.5) * 255).astype(int), 0, 255)
+        dfTemp["Color"] = [f"{color}{v:02x}" for v in vals]
         shift = i // 3 * 1/3
         radius = pltSize - (pltSize - centerSize)/len(mutations) * i - shift
         ax.text(-0.2, radius - (pltSize - centerSize)/len(mutations)/2, mutations[i], style='italic', ha='right', va='center', fontsize=mutationFontSize)
-        dfTemp = dfTemp.drop(columns=["Mutation", "Intensity"])
+        dfTemp = dfTemp.drop(columns=["Mutation"])
         wedges, texts = ax.pie(list(dfTemp["Degree"]),               
                             radius=radius, 
                             counterclock=False, startangle=-270,
@@ -1378,6 +1389,7 @@ def _graphCircosFrequencyPerMutation_plotGeneGroup(df, chrom, gene, group, mutat
     fileName = f"{gene}_{int(group)}"
     fig.savefig(f"{resultsDir}/{ref}/{run}/graphs/circos/{fileName}.png", bbox_inches='tight')
     plt.clf()
+    plt.close(fig)
 
 def _graphCircosFrequencyPerMutation(df, ref, run):
     """It plots a circos with each position on the x axis and the
@@ -1410,12 +1422,13 @@ def _graphCircosFrequencyPerMutation(df, ref, run):
     maxColor = color + hex(255)[-2:]
     cm = mcolors.LinearSegmentedColormap.from_list(np.arange(0, 100, 0.1), [minColor, maxColor], 
         N=len(np.arange(0, 100, 0.1)))
+    if df.empty or len(df) == 0:
+        return
     nonZero = df.Frequency > 0
     df.loc[nonZero, 'Frequency'] = minIntensity + (df.loc[nonZero, 'Frequency'] - minFreq) / (maxFreq - minFreq) * (1 - minIntensity)
     mutations = ["AC", "AG", "AT", "CA", "CG", "CT", "GA", "GC", "GT", "TA", "TC", "TG"]
     for mutation in mutations:
-        df[mutation] = 0.0
-        df[mutation].mask(df["Mutation"] == mutation, df["Frequency"], inplace=True)
+        df[mutation] = np.where(df["Mutation"] == mutation, df["Frequency"], 0.0)
     columns = ["CHROM", "Position", "GeneName", "Sample"] + mutations
     df = df[columns].drop_duplicates()
     genePosDf = df[["GeneName", "Position"]]
@@ -1430,6 +1443,12 @@ def _graphCircosFrequencyPerMutation(df, ref, run):
     df = df.reset_index()
     df = (df.groupby(["CHROM", "Position"]).apply(_aggregateByPositionPerMutation)
           .reset_index())
+    if "GenePosMin" not in df.columns:
+        df["GenePosMin"] = df["Position"]
+    if "GenePosMax" not in df.columns:
+        df["GenePosMax"] = df["Position"]
+    df["GenePosMin"] = df["GenePosMin"].fillna(df["Position"])
+    df["GenePosMax"] = df["GenePosMax"].fillna(df["Position"])
     counts = (df[["CHROM", "GeneName", "Position", "GenePosMin", "GenePosMax"]]
               .groupby(["CHROM", "GenePosMin", "GenePosMax", "GeneName"]).count()
               .rename(columns={"Position": "Count"}))
@@ -1446,7 +1465,6 @@ def _graphCircosFrequencyPerMutation(df, ref, run):
     df = df.reset_index()
     dfPerGene = df[df.Count.isna()]
     df = df[~df.Count.isna()]
-    df = df.set_index("GeneName")
     df = df.sort_values(["Group", "GenePosMin", "GenePosMax"])
     maxFreq = 1
 
@@ -1455,10 +1473,13 @@ def _graphCircosFrequencyPerMutation(df, ref, run):
         with open(filePath, "w") as f:
             f.write("Chromosome\tGeneName\tGroup")
 
-    with multiprocessing.Pool(processes=max(1, numProcesses // 4)) as pool:
-        pool.starmap(_graphCircosFrequencyPerMutation_plotGroup, [(df, chrom, group, mutations, maxFreq, mutationFontSize, colorBarFontSize, colorBarTickSize, pltSize, color, geneFontSize, titleFontSize, blankDegrees, centerSize, positionFontSize, cm, ref, run)
+    numPlottingProcesses = min(4, max(1, multiprocessing.cpu_count() // 4))
+    with multiprocessing.Pool(processes=numPlottingProcesses) as pool:
+        pool.starmap(_graphCircosFrequencyPerMutation_plotGroup, [
+            (df[(df.CHROM == chrom) & (df.Group == group)].copy(), chrom, group, mutations, maxFreq, mutationFontSize, colorBarFontSize, colorBarTickSize, pltSize, color, geneFontSize, titleFontSize, blankDegrees, centerSize, positionFontSize, cm, ref, run)
             for chrom in df.CHROM.unique()
-            for group in df[df.CHROM == chrom].Group.unique()])
+            for group in df[df.CHROM == chrom].Group.unique()
+        ])
 
         if len(dfPerGene) > 0:
             df = dfPerGene.drop(columns=["Count", "Sum", "Group"])
@@ -1472,128 +1493,130 @@ def _graphCircosFrequencyPerMutation(df, ref, run):
             df = df.merge(dfAux, left_index=True, right_index=True)
             df = df.reset_index()
 
-        pool.starmap(_graphCircosFrequencyPerMutation_plotGeneGroup, [(df, chrom, gene, group, mutations, maxFreq, mutationFontSize, colorBarFontSize, colorBarTickSize, pltSize, color, titleFontSize, blankDegrees, centerSize, positionFontSize, cm, ref, run)
-            for chrom in df.CHROM.unique()
-            for gene in dfPerGene.GeneName.unique()
-            for group in df[(df.GeneName == gene) & (df.CHROM == chrom)].Group.unique()])
+            pool.starmap(_graphCircosFrequencyPerMutation_plotGeneGroup, [
+                (df[(df.CHROM == chrom) & (df.GeneName == gene) & (df.Group == group)].copy(), chrom, gene, group, mutations, maxFreq, mutationFontSize, colorBarFontSize, colorBarTickSize, pltSize, color, titleFontSize, blankDegrees, centerSize, positionFontSize, cm, ref, run)
+                for chrom in df.CHROM.unique()
+                for gene in dfPerGene.GeneName.unique()
+                for group in df[(df.GeneName == gene) & (df.CHROM == chrom)].Group.unique()
+            ])
                     
-def _graphCircosPresencePerRun_plotGroup(df, chrom, group, samples, pltSize, color, sampleFontSize, geneFontSize, titleFontSize, blankDegrees, centerSize, positionFontSize, ref):
-        fig, ax = plt.subplots()
-        ax.axis("equal")
-        for i in range(len(samples)):
-            dfTemp = []    
-            sample = samples[i]
-            dfTemp.append(df.loc[(df["Sample"] == sample) & (df["Group"] == group) & (df["CHROM"] == chrom), :])
-            dfTemp = pd.concat(dfTemp)
-            dfTemp = dfTemp.drop_duplicates().reset_index().drop(columns=["index"])
-            dfTemp = dfTemp.groupby(["CHROM", "Position", "GeneName", "GenePosMin", "GenePosMax", "Sample"]).sum().reset_index()
-            dfTemp["Degree"] = (360 - blankDegrees) / len(dfTemp) # Generate the degrees in the pie chart for each position
-            dfTemp = pd.concat([dfTemp, 
-                pd.DataFrame([{"CHROM": "", "Position": "", "GeneName": "", 
-                                "GenePosMin": (df["Position"].max() + 1), 
-                                "GenePosMax": (df["Position"].max() + 1), "Sample": "", 
-                                "Presence": 0, "Degree": blankDegrees}])], 
-                ignore_index=True)
-            dfTemp["Intensity"] = (((dfTemp["Presence"])**0.5)*255).astype(int).apply(hex)
-            dfTemp["Intensity"] = dfTemp["Intensity"].str.partition("x")[2]
-            dfTemp["Color"] = ""
-            dfTemp["Color"] = dfTemp["Color"].mask(dfTemp["Intensity"].str.len() == 2, color + dfTemp["Intensity"])
-            dfTemp["Color"] = dfTemp["Color"].mask(dfTemp["Intensity"].str.len() != 2, color + "0" + dfTemp["Intensity"])
-            shift = i // 3 * 1/3
-            radius = pltSize - (pltSize - centerSize)/len(samples) * i - shift
-            ax.text(-0.2, radius - (pltSize - centerSize)/len(samples)/2, samples[i], style='italic', ha='right', va='center', fontsize=sampleFontSize)
-            wedges, texts = ax.pie(list(dfTemp["Degree"]),               
-                                radius=radius, 
-                                counterclock=False, startangle=-270,
-                    colors=list(dfTemp["Color"]),
-                    wedgeprops=dict(width=(pltSize - centerSize)/len(samples), edgecolor="#000000FF", linewidth=5)
-                )
-            wedges[-1].set_visible(False)
-            
-        wedges, texts = ax.pie(list(dfTemp["Degree"]),
-            radius=pltSize + 2, counterclock=False, startangle=-270,
-            labels=list(dfTemp[["Position", "GeneName", "Sample"]].drop_duplicates()["Position"]),
-            labeldistance=0.98, rotatelabels=True,
-            colors=["#FFFFFF00"],
-            wedgeprops=dict(width=(len(samples)-1), alpha=0.0, linewidth=2),
-            textprops=dict(rotation_mode="anchor", ha="center", va="center", fontsize=positionFontSize)
-        )
-
-        genes = (dfTemp[["GeneName", "GenePosMin", "GenePosMax", "Degree"]]
-                    .groupby(["GeneName", "GenePosMin", "GenePosMax"]).sum()
-                    .sort_values(["GenePosMin", "GenePosMax"]).reset_index())
-        wedges, texts = ax.pie(list(genes["Degree"]),
-                radius= centerSize - 1.2, startangle=-270, counterclock=False,
-                labels=list(genes["GeneName"]),
-                labeldistance=0.95, rotatelabels=True,
-                colors=["#AAAAAA", "#333333"],
-                wedgeprops=dict(width=0.15, edgecolor="white", linewidth=5),
-                textprops=dict(rotation_mode="anchor", va="center", fontsize=geneFontSize)
+def _graphCircosPresencePerRun_plotGroup(dfGroup, chrom, group, samples, pltSize, color, sampleFontSize, geneFontSize, titleFontSize, blankDegrees, centerSize, positionFontSize, ref):
+    fig, ax = plt.subplots()
+    ax.axis("equal")
+    pos_max = dfGroup["Position"].max() if len(dfGroup) > 0 and pd.notna(dfGroup["Position"].max()) else 0
+    for i in range(len(samples)):
+        sample = samples[i]
+        dfTemp = dfGroup.loc[dfGroup["Sample"] == sample, :].copy()
+        if "index" in dfTemp.columns:
+            dfTemp = dfTemp.drop(columns=["index"])
+        dfTemp = dfTemp.drop_duplicates().reset_index(drop=True)
+        dfTemp = dfTemp.groupby(["CHROM", "Position", "GeneName", "GenePosMin", "GenePosMax", "Sample"]).sum().reset_index()
+        dfTemp["Degree"] = (360 - blankDegrees) / len(dfTemp) if len(dfTemp) > 0 else 1.0
+        dfTemp = pd.concat([dfTemp, 
+            pd.DataFrame([{"CHROM": "", "Position": "", "GeneName": "", 
+                            "GenePosMin": (pos_max + 1), 
+                            "GenePosMax": (pos_max + 1), "Sample": "", 
+                            "Presence": 0, "Degree": blankDegrees}])], 
+            ignore_index=True)
+        vals = np.clip((((dfTemp["Presence"].clip(0, 1)) ** 0.5) * 255).astype(int), 0, 255)
+        dfTemp["Color"] = [f"{color}{v:02x}" for v in vals]
+        shift = i // 3 * 1/3
+        radius = pltSize - (pltSize - centerSize)/len(samples) * i - shift
+        ax.text(-0.2, radius - (pltSize - centerSize)/len(samples)/2, samples[i], style='italic', ha='right', va='center', fontsize=sampleFontSize)
+        wedges, texts = ax.pie(list(dfTemp["Degree"]),               
+                            radius=radius, 
+                            counterclock=False, startangle=-270,
+                colors=list(dfTemp["Color"]),
+                wedgeprops=dict(width=(pltSize - centerSize)/len(samples), edgecolor="#000000FF", linewidth=5)
             )
         wedges[-1].set_visible(False)
-        for t in texts:
-            if t.get_ha() == "right":
-                t.set_ha("left")
-            elif t.get_ha() == "left":
-                t.set_ha("right")
-
-        ax.text(0, -0.3, f"{chrom}", style='italic', ha='center', va='center', fontsize=titleFontSize)
-        ax.text(0, 0.3, f"GROUP {int(group)}", style='italic', ha='center', va='center', fontsize=titleFontSize)
-    
-        fileName = f"{chrom}_{int(group)}"
-        fig.savefig(f"{resultsDir}/{ref}/graphs/circos/{fileName}.png", bbox_inches='tight')
-        plt.clf()
-
-        with open(f"{resultsDir}/{ref}/graphs/circos/_groups.txt", "a") as f:
-            for gene in genes["GeneName"].unique():
-                if gene.strip() != "":
-                    f.write("\n" + chrom + "\t" + gene + "\t" + str(int(group)))
-
-def _graphCircosPresencePerRun_plotGeneGroup(df, chrom, gene, group, samples, pltSize, blankDegrees, color, centerSize, sampleFontSize, positionFontSize, titleFontSize, ref):
-        fig, ax = plt.subplots()
-        ax.axis("equal")
-        for i in range(len(samples)):
-            dfTemp = []    
-            sample = samples[i]
-            dfTemp.append(df.loc[(df["Sample"] == sample) & (df["GeneName"] == gene) & (df["Group"] == group) & (df["CHROM"] == chrom), :])
-            dfTemp = pd.concat(dfTemp)
-            dfTemp = dfTemp.drop_duplicates().reset_index().drop(columns=["index"])
-            dfTemp = dfTemp.groupby(["CHROM", "Position", "GeneName", "Sample"]).sum().reset_index()
-            dfTemp["Degree"] = (360 - blankDegrees) / len(dfTemp) # Generate the degrees in the pie chart for each position
-            dfTemp = pd.concat([dfTemp, 
-                pd.DataFrame([{"CHROM": "", "Position": "", "GeneName": "", "Sample": "", "Presence": 0, "Degree": blankDegrees}])], 
-                ignore_index=True)
-            dfTemp["Intensity"] = (((dfTemp["Presence"])**0.5)*255).astype(int).apply(hex)
-            dfTemp["Intensity"] = dfTemp["Intensity"].str.partition("x")[2]
-            dfTemp["Color"] = ""
-            dfTemp["Color"] = dfTemp["Color"].mask(dfTemp["Intensity"].str.len() == 2, color + dfTemp["Intensity"])
-            dfTemp["Color"] = dfTemp["Color"].mask(dfTemp["Intensity"].str.len() != 2, color + "0" + dfTemp["Intensity"])
-            shift = i // 3 * 1/3
-            radius = pltSize - (pltSize - centerSize)/len(samples) * i - shift
-            ax.text(-0.2, radius - (pltSize - centerSize)/len(samples)/2, samples[i], style='italic', ha='right', va='center', fontsize=sampleFontSize)
-            wedges, texts = ax.pie(list(dfTemp["Degree"]),               
-                                radius=radius, 
-                                counterclock=False, startangle=-270,
-                    colors=list(dfTemp["Color"]),
-                    wedgeprops=dict(width=(pltSize - centerSize)/len(samples), edgecolor="#000000FF", linewidth=5)
-                )
-            wedges[-1].set_visible(False)
-            
-        wedges, texts = ax.pie(list(dfTemp["Degree"]),
-            radius=pltSize + 2, counterclock=False, startangle=-270,
-            labels=list(dfTemp[["Position", "GeneName", "Sample"]].drop_duplicates()["Position"]),
-            labeldistance=0.98, rotatelabels=True,
-            colors=["#FFFFFF00"],
-            wedgeprops=dict(width=(len(samples)-1), alpha=0.0, linewidth=2),
-            textprops=dict(rotation_mode="anchor", ha="center", va="center", fontsize=positionFontSize)
-        )
-
-        ax.text(0, -0.3, f"{chrom}", style='italic', ha='center', va='center', fontsize=titleFontSize)
-        ax.text(0, 0.3, f"{gene} - GROUP {int(group)}", style='italic', ha='center', va='center', fontsize=titleFontSize)
         
-        fileName = f"{gene}_{int(group)}"
-        fig.savefig(f"{resultsDir}/{ref}/graphs/circos/{fileName}.png", bbox_inches='tight')
-        plt.clf()
+    wedges, texts = ax.pie(list(dfTemp["Degree"]),
+        radius=pltSize + 2, counterclock=False, startangle=-270,
+        labels=list(dfTemp[["Position", "GeneName", "Sample"]].drop_duplicates()["Position"]),
+        labeldistance=0.98, rotatelabels=True,
+        colors=["#FFFFFF00"],
+        wedgeprops=dict(width=(len(samples)-1), alpha=0.0, linewidth=2),
+        textprops=dict(rotation_mode="anchor", ha="center", va="center", fontsize=positionFontSize)
+    )
+
+    genes = (dfTemp[["GeneName", "GenePosMin", "GenePosMax", "Degree"]]
+                .groupby(["GeneName", "GenePosMin", "GenePosMax"]).sum()
+                .sort_values(["GenePosMin", "GenePosMax"]).reset_index())
+    wedges, texts = ax.pie(list(genes["Degree"]),
+            radius= centerSize - 1.2, startangle=-270, counterclock=False,
+            labels=list(genes["GeneName"]),
+            labeldistance=0.95, rotatelabels=True,
+            colors=["#AAAAAA", "#333333"],
+            wedgeprops=dict(width=0.15, edgecolor="white", linewidth=5),
+            textprops=dict(rotation_mode="anchor", va="center", fontsize=geneFontSize)
+        )
+    wedges[-1].set_visible(False)
+    for t in texts:
+        if t.get_ha() == "right":
+            t.set_ha("left")
+        elif t.get_ha() == "left":
+            t.set_ha("right")
+
+    ax.text(0, -0.3, f"{chrom}", style='italic', ha='center', va='center', fontsize=titleFontSize)
+    ax.text(0, 0.3, f"GROUP {int(group)}", style='italic', ha='center', va='center', fontsize=titleFontSize)
+
+    fileName = f"{chrom}_{int(group)}"
+    fig.savefig(f"{resultsDir}/{ref}/graphs/circos/{fileName}.png", bbox_inches='tight')
+    plt.clf()
+    plt.close(fig)
+
+    with open(f"{resultsDir}/{ref}/graphs/circos/_groups.txt", "a") as f:
+        for gene in genes["GeneName"].unique():
+            if str(gene).strip() != "":
+                f.write("\n" + str(chrom) + "\t" + str(gene) + "\t" + str(int(group)))
+
+def _graphCircosPresencePerRun_plotGeneGroup(dfGroup, chrom, gene, group, samples, pltSize, blankDegrees, color, centerSize, sampleFontSize, positionFontSize, titleFontSize, ref):
+    fig, ax = plt.subplots()
+    ax.axis("equal")
+    for i in range(len(samples)):
+        sample = samples[i]
+        dfTemp = dfGroup.loc[dfGroup["Sample"] == sample, :].copy()
+        if "index" in dfTemp.columns:
+            dfTemp = dfTemp.drop(columns=["index"])
+        dfTemp = dfTemp.drop_duplicates().reset_index(drop=True)
+        dfTemp = dfTemp.groupby(["CHROM", "Position", "GeneName", "Sample"]).sum().reset_index()
+        dfTemp["Degree"] = (360 - blankDegrees) / len(dfTemp) if len(dfTemp) > 0 else 1.0
+        dfTemp = pd.concat([dfTemp, 
+            pd.DataFrame([{"CHROM": "", "Position": "", "GeneName": "", "Sample": "", "Presence": 0, "Degree": blankDegrees}])], 
+            ignore_index=True)
+        vals = np.clip((((dfTemp["Presence"].clip(0, 1)) ** 0.5) * 255).astype(int), 0, 255)
+        dfTemp["Color"] = [f"{color}{v:02x}" for v in vals]
+        shift = i // 3 * 1/3
+        radius = pltSize - (pltSize - centerSize)/len(samples) * i - shift
+        ax.text(-0.2, radius - (pltSize - centerSize)/len(samples)/2, samples[i], style='italic', ha='right', va='center', fontsize=sampleFontSize)
+        wedges, texts = ax.pie(list(dfTemp["Degree"]),               
+                            radius=radius, 
+                            counterclock=False, startangle=-270,
+                colors=list(dfTemp["Color"]),
+                wedgeprops=dict(width=(pltSize - centerSize)/len(samples), edgecolor="#000000FF", linewidth=5)
+            )
+        wedges[-1].set_visible(False)
+        
+    wedges, texts = ax.pie(list(dfTemp["Degree"]),
+        radius=pltSize + 2, counterclock=False, startangle=-270,
+        labels=list(dfTemp[["Position", "GeneName", "Sample"]].drop_duplicates()["Position"]),
+        labeldistance=0.98, rotatelabels=True,
+        colors=["#FFFFFF00"],
+        wedgeprops=dict(width=(len(samples)-1), alpha=0.0, linewidth=2),
+        textprops=dict(rotation_mode="anchor", ha="center", va="center", fontsize=positionFontSize)
+    )
+
+    ax.text(0, -0.3, f"{chrom}", style='italic', ha='center', va='center', fontsize=titleFontSize)
+    ax.text(0, 0.3, f"{gene} - GROUP {int(group)}", style='italic', ha='center', va='center', fontsize=titleFontSize)
+
+    fileName = f"{gene}_{int(group)}"
+    fig.savefig(f"{resultsDir}/{ref}/graphs/circos/{fileName}.png", bbox_inches='tight')
+    plt.clf()
+    plt.close(fig)
+
+    with open(f"{resultsDir}/{ref}/graphs/circos/_groups.txt", "a") as f:
+        f.write("\n" + str(chrom) + "\t" + str(gene) + "\t" + str(int(group)))
 
 def _graphCircosPresencePerRun(df, ref):
     """It plots a circos with each position on the x axis and the
@@ -1620,6 +1643,8 @@ def _graphCircosPresencePerRun(df, ref):
     cm = mcolors.LinearSegmentedColormap.from_list(np.arange(0, 100, 0.1), [minColor, maxColor], 
         N=len(np.arange(0, 100, 0.1)))
     groupSize = config.figPositionsPerCircos
+    if df.empty or len(df) == 0:
+        return
     columns = ["CHROM", "Position", "GeneName", "Sample"] 
     df = df[columns].drop_duplicates()
     genePosDf = df[["CHROM", "GeneName", "Position"]]
@@ -1636,6 +1661,12 @@ def _graphCircosPresencePerRun(df, ref):
         .reset_index())
     df = pd.merge(df.drop(columns=["GeneName", "GenePos"]), dfAggregated, on=["CHROM", 'Position'], how='left')
     df = df.drop_duplicates()
+    if "GenePosMin" not in df.columns:
+        df["GenePosMin"] = df["Position"]
+    if "GenePosMax" not in df.columns:
+        df["GenePosMax"] = df["Position"]
+    df["GenePosMin"] = df["GenePosMin"].fillna(df["Position"])
+    df["GenePosMax"] = df["GenePosMax"].fillna(df["Position"])
     auxDf = (df[["CHROM", "Position", "GeneName", "GenePosMin", "GenePosMax"]]
             .value_counts().loc[lambda x: x > 1]
             .reset_index(name="Count")
@@ -1678,10 +1709,13 @@ def _graphCircosPresencePerRun(df, ref):
         with open(filePath, "w") as f:
             f.write("Chromosome\tGeneName\tGroup")
 
-    with multiprocessing.Pool(processes=max(1, numProcesses // 4)) as pool:
-        pool.starmap(_graphCircosPresencePerRun_plotGroup, [(df, chrom, group, samples, pltSize, color, sampleFontSize, geneFontSize, titleFontSize, blankDegrees, centerSize, positionFontSize, ref)
+    numPlottingProcesses = min(4, max(1, multiprocessing.cpu_count() // 4))
+    with multiprocessing.Pool(processes=numPlottingProcesses) as pool:
+        pool.starmap(_graphCircosPresencePerRun_plotGroup, [
+            (df[(df.CHROM == chrom) & (df.Group == group)].copy(), chrom, group, samples, pltSize, color, sampleFontSize, geneFontSize, titleFontSize, blankDegrees, centerSize, positionFontSize, ref)
             for chrom in df.CHROM.unique()
-            for group in df[df.CHROM == chrom].Group.unique()])
+            for group in df[df.CHROM == chrom].Group.unique()
+        ])
 
         if len(dfPerGene) > 0:
             df = dfPerGene.drop(columns=["Count", "Sum", "Group"])
@@ -1695,16 +1729,17 @@ def _graphCircosPresencePerRun(df, ref):
             df = df.merge(dfAux, left_index=True, right_index=True)
             df = df.reset_index()
 
-        pool.starmap(_graphCircosPresencePerRun_plotGeneGroup, [(df, chrom, gene, group, samples, pltSize, blankDegrees, color, centerSize, sampleFontSize, positionFontSize, titleFontSize, ref)
-            for chrom in df.CHROM.unique()
-            for gene in dfPerGene.GeneName.unique()
-            for group in df[(df.GeneName == gene) & (df.CHROM == chrom)].Group.unique()])
+            pool.starmap(_graphCircosPresencePerRun_plotGeneGroup, [
+                (df[(df.CHROM == chrom) & (df.GeneName == gene) & (df.Group == group)].copy(), chrom, gene, group, samples, pltSize, blankDegrees, color, centerSize, sampleFontSize, positionFontSize, titleFontSize, ref)
+                for chrom in df.CHROM.unique()
+                for gene in dfPerGene.GeneName.unique()
+                for group in df[(df.GeneName == gene) & (df.CHROM == chrom)].Group.unique()
+            ])
 
-def _graphHeatmapFrequencyPerMutation_plotGroup(df, chrom, group, mutations, groupedMutations, pltSize, cmap, tickSize, geneSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref, run):
-    dfGroup = df.loc[(df.CHROM == chrom) & (df.Group == group)].reset_index()
-    dfPivot = dfGroup[["Position", "Mutation", "Frequency", "GeneName"]].pivot(index="Position", columns='Mutation', values='Frequency')
-    dfPivot = dfPivot.reindex(columns=mutations, fill_value=0)
-    dfPivot = dfPivot.filter(mutations)
+def _graphHeatmapFrequencyPerMutation_plotGroup(dfGroup, chrom, group, mutations, groupedMutations, pltSize, cmap, tickSize, geneSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref, run):
+    dfGroup = dfGroup.reset_index(drop=True)
+    dfPivot = dfGroup.pivot(index='Position', columns='Mutation', values='Frequency')
+    dfPivot = dfPivot.filter(['AC', 'AG', 'AT', 'CA', 'CG', 'CT', 'GA', 'GC', 'GT', 'TA', 'TC', 'TG'])
     dfPivot = dfPivot.fillna(0)
     size = len(dfGroup.Position.unique())
     fig, axes = plt.subplots(1, len(groupedMutations), figsize=(pltSize, size * pltSize / 20))
@@ -1780,12 +1815,12 @@ def _graphHeatmapFrequencyPerMutation_plotGroup(df, chrom, group, mutations, gro
     fileName = f"{chrom}_{int(group)}"
     fig.savefig(f"{resultsDir}/{ref}/{run}/graphs/heatmap/{fileName}.png", bbox_inches='tight')
     plt.clf()
+    plt.close(fig)
     with open(f"{resultsDir}/{ref}/{run}/graphs/heatmap/_groups.txt", "a") as f:
         for i, row in geneGroups.items():
             f.write("\n" + chrom + "\t" + i[0] + "\t" + str(int(group)))
 
-def _graphHeatmapFrequencyPerMutation_plotGeneGroup(df, chrom, gene, group, groupedMutations, pltSize, cmap, tickSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref, run):
-    dfGroup = df.loc[(df.CHROM == chrom) & (df.Group == group) & (df.GeneName == gene)]
+def _graphHeatmapFrequencyPerMutation_plotGeneGroup(dfGroup, chrom, gene, group, groupedMutations, pltSize, cmap, tickSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref, run):
     dfPivot = dfGroup.pivot(index='Position', columns='Mutation', values='Frequency')
     dfPivot = dfPivot.filter(['AC', 'AG', 'AT', 'CA', 'CG', 'CT', 'GA', 'GC', 'GT', 'TA', 'TC', 'TG'])
     dfPivot = dfPivot.fillna(0)
@@ -1844,6 +1879,7 @@ def _graphHeatmapFrequencyPerMutation_plotGeneGroup(df, chrom, gene, group, grou
     fileName = f"{gene}_{int(group)}"
     fig.savefig(f"{resultsDir}/{ref}/{run}/graphs/heatmap/{fileName}.png", bbox_inches='tight')
     plt.clf()
+    plt.close(fig)
 
 def _graphHeatmapFrequencyPerMutation(df, ref, run):
     minIntensity = config.figPositionGraphMinIntensity
@@ -1860,6 +1896,8 @@ def _graphHeatmapFrequencyPerMutation(df, ref, run):
     minColor = color + hex(int(((2/100)**0.5)*255))[-2:]
     maxColor = color + hex(255)[-2:]
 
+    if df.empty or len(df) == 0:
+        return
     nonZero = df.Frequency > 0
     minFreq = 0
     maxFreq = 1
@@ -1868,8 +1906,7 @@ def _graphHeatmapFrequencyPerMutation(df, ref, run):
     df.loc[nonZero, 'Frequency'] = minIntensity + (df.loc[nonZero, 'Frequency'] - minFreq) / (maxFreq - minFreq) * (1 - minIntensity)
     mutations = ['AC', 'AG', 'AT', 'CA', 'CG', 'CT', 'GA', 'GC', 'GT', 'TA', 'TC', 'TG']
     for mutation in mutations:
-        df[mutation] = 0.0
-        df[mutation].mask(df["Mutation"] == mutation, df["Frequency"], inplace=True)
+        df[mutation] = np.where(df["Mutation"] == mutation, df["Frequency"], 0.0)
     groupedMutations = [['AC', 'AG', 'AT'], ['CA', 'CG', 'CT'], ['GA', 'GC', 'GT'], ['TA', 'TC', 'TG']]
     columns = ["CHROM", "Position", "GeneName", "Sample"] + mutations
     df = df[columns].drop_duplicates()
@@ -1885,6 +1922,12 @@ def _graphHeatmapFrequencyPerMutation(df, ref, run):
     df = df.reset_index()
     df = (df.groupby(["CHROM", "Position"]).apply(_aggregateByPositionPerMutation)
           .reset_index())
+    if "GenePosMin" not in df.columns:
+        df["GenePosMin"] = df["Position"]
+    if "GenePosMax" not in df.columns:
+        df["GenePosMax"] = df["Position"]
+    df["GenePosMin"] = df["GenePosMin"].fillna(df["Position"])
+    df["GenePosMax"] = df["GenePosMax"].fillna(df["Position"])
     counts = (df[["CHROM", "GeneName", "Position", "GenePosMin", "GenePosMax"]]
               .groupby(["CHROM", "GenePosMin", "GenePosMax", "GeneName"]).count()
               .rename(columns={"Position": "Count"}))
@@ -1901,7 +1944,6 @@ def _graphHeatmapFrequencyPerMutation(df, ref, run):
     df = df.reset_index()
     dfPerGene = df[df.Count.isna()]
     df = df[~df.Count.isna()]
-    df = df.set_index("GeneName")
     df = df.sort_values(["Group", "GenePosMin", "GenePosMax"])
     
     if len(df) > 0:
@@ -1909,10 +1951,13 @@ def _graphHeatmapFrequencyPerMutation(df, ref, run):
         with open(filePath, "w") as f:
             f.write("Chromosome\tGeneName\tGroup")
 
-    with multiprocessing.Pool(processes=max(1, numProcesses // 4)) as pool:
-        pool.starmap(_graphHeatmapFrequencyPerMutation_plotGroup, [(df, chrom, group, mutations, groupedMutations, pltSize, cmap, tickSize, geneSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref, run)
+    numPlottingProcesses = min(4, max(1, multiprocessing.cpu_count() // 4))
+    with multiprocessing.Pool(processes=numPlottingProcesses) as pool:
+        pool.starmap(_graphHeatmapFrequencyPerMutation_plotGroup, [
+            (df[(df.CHROM == chrom) & (df.Group == group)].copy(), chrom, group, mutations, groupedMutations, pltSize, cmap, tickSize, geneSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref, run)
             for chrom in df.CHROM.unique()
-            for group in df[df.CHROM == chrom].Group.unique()])
+            for group in df[df.CHROM == chrom].Group.unique()
+        ])
 
         if len(dfPerGene) > 0:
             df = dfPerGene.drop(columns=["Count", "Sum", "Group"])
@@ -1926,15 +1971,14 @@ def _graphHeatmapFrequencyPerMutation(df, ref, run):
             df = df.merge(dfAux, left_index=True, right_index=True)
             df = df.reset_index()
         
-        pool.starmap(_graphHeatmapFrequencyPerMutation_plotGeneGroup, [(df, chrom, gene, group, groupedMutations, pltSize, cmap, tickSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref, run)
-            for chrom in df.CHROM.unique()
-            for gene in dfPerGene.GeneName.unique()
-            for group in df[(df.GeneName == gene) & (df.CHROM == chrom)].Group.unique()])
+            pool.starmap(_graphHeatmapFrequencyPerMutation_plotGeneGroup, [
+                (df[(df.CHROM == chrom) & (df.GeneName == gene) & (df.Group == group)].copy(), chrom, gene, group, groupedMutations, pltSize, cmap, tickSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref, run)
+                for chrom in df.CHROM.unique()
+                for gene in dfPerGene.GeneName.unique()
+                for group in df[(df.GeneName == gene) & (df.CHROM == chrom)].Group.unique()
+            ])
 
-def _graphHeatmapPresencePerRun_plotGroup(df, chrom, group, samples, pltSize, cmap, tickSize, geneSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref):
-    dfGroup = []
-    dfGroup.append(df.loc[(df["Group"] == group) & (df["CHROM"] == chrom), :])
-    dfGroup = pd.concat(dfGroup)
+def _graphHeatmapPresencePerRun_plotGroup(dfGroup, chrom, group, samples, pltSize, cmap, tickSize, geneSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref):
     dfPivot = dfGroup[["Position", "Sample", "GeneName", "Presence"]].pivot(index="Position", columns='Sample', values='Presence')
     dfPivot = dfPivot.reindex(columns=samples, fill_value=0)
     dfPivot = dfPivot.filter(samples)
@@ -1972,7 +2016,7 @@ def _graphHeatmapPresencePerRun_plotGroup(df, chrom, group, samples, pltSize, cm
     maxTextWidth = 0
     for i, row in geneGroups.items():
         color = colors[geneCount % 2]
-        rect_x = len(groupDf.columns) + 0.2 
+        rect_x = 3.2 
         rect_y = rowCount
         rect_width = 0.25 
         rect_height = row
@@ -1995,7 +2039,8 @@ def _graphHeatmapPresencePerRun_plotGroup(df, chrom, group, samples, pltSize, cm
     bottom_ax.set_xticks([])
     bottom_ax.set_yticks([])
     bottom_ax.set_frame_on(False)
-    
+    top_ax.set_xlabel("Sample", labelpad=tickSize + 10, fontsize=tickSize)
+    bottom_ax.set_xlabel("Sample", labelpad=tickSize + 10, fontsize=tickSize)
     plt.title(f"{chrom} GROUP {int(group)}", fontsize=titleSize, pad=titlePadding)
         
     top_label_x_pixels = top_ax.xaxis.label.get_transform().transform((0.5, 0))[0]
@@ -2020,15 +2065,13 @@ def _graphHeatmapPresencePerRun_plotGroup(df, chrom, group, samples, pltSize, cm
     fileName = f"{chrom}_{int(group)}"
     fig.savefig(f"{resultsDir}/{ref}/graphs/heatmap/{fileName}.png", bbox_inches='tight')
     plt.clf()
+    plt.close(fig)
 
     with open(f"{resultsDir}/{ref}/graphs/heatmap/_groups.txt", "a") as f:
         for i, row in geneGroups.items():
             f.write("\n" + chrom + "\t" + i[0] + "\t" + str(int(group)))
 
-def _graphHeatmapPresencePerRun_plotGeneGroup(df, chrom, gene, group, samples, pltSize, cmap, tickSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref):
-    dfGroup = []
-    dfGroup.append(df.loc[(df.CHROM == chrom) & (df.Group == group) & (df.GeneName == gene)])
-    dfGroup = pd.concat(dfGroup)
+def _graphHeatmapPresencePerRun_plotGeneGroup(dfGroup, chrom, gene, group, samples, pltSize, cmap, tickSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref):
     dfPivot = dfGroup[["Position", "Sample", "GeneName", "Presence"]].pivot(index="Position", columns='Sample', values='Presence')
     dfPivot = dfPivot.reindex(columns=samples, fill_value=0)
     dfPivot = dfPivot.filter(samples)
@@ -2050,7 +2093,7 @@ def _graphHeatmapPresencePerRun_plotGeneGroup(df, chrom, gene, group, samples, p
         ax.set_xticks(np.arange(len(groupDf.columns)) + 0.5)
         ax.set_xticklabels(groupDf.columns)
         ax.set_yticks(np.arange(len(groupDf)) + 0.5)
-        ax.set_yticklabels(groupDf.index)
+        ax.set_yticklabels(dfPivot.index)
         ax.tick_params(axis="x", bottom=False, top=False, labelbottom=True, labeltop=True, labelsize=tickSize, rotation=90)
         ax.tick_params(axis="y", left=False, labelleft=True, labelsize=tickSize)
         if i != 0:
@@ -2091,6 +2134,7 @@ def _graphHeatmapPresencePerRun_plotGeneGroup(df, chrom, gene, group, samples, p
     fileName = f"{gene}_{int(group)}"
     fig.savefig(f"{resultsDir}/{ref}/graphs/heatmap/{fileName}.png", bbox_inches='tight')
     plt.clf()
+    plt.close(fig)
 
 def _graphHeatmapPresencePerRun(df, ref):
     pltSize = config.figHeatmapSize
@@ -2107,6 +2151,8 @@ def _graphHeatmapPresencePerRun(df, ref):
         N=len(np.arange(0, 100, 0.1)))
     groupSize = config.figPositionsPerHeatmap
     cmap = sns.blend_palette(["white", "#D6806D"], as_cmap=True)
+    if df.empty or len(df) == 0:
+        return
     columns = ["CHROM", "Position", "GeneName", "Sample"] 
     df = df[columns].drop_duplicates()
     genePosDf = df[["CHROM", "GeneName", "Position"]]
@@ -2118,13 +2164,17 @@ def _graphHeatmapPresencePerRun(df, ref):
     df = df.set_index("GeneName")
     df = df.merge(genePosDf, left_index=True, right_index=True)
     df = df.reset_index()
-    import sys
-    sys.exit(0)
     dfAggregated = (df.groupby(["CHROM", "Position"])
         .apply(_aggregateByPositionPerRun)
         .reset_index())
     df = pd.merge(df.drop(columns=["GeneName", "GenePos"]), dfAggregated, on=["CHROM", 'Position'], how='left')
     df = df.drop_duplicates()
+    if "GenePosMin" not in df.columns:
+        df["GenePosMin"] = df["Position"]
+    if "GenePosMax" not in df.columns:
+        df["GenePosMax"] = df["Position"]
+    df["GenePosMin"] = df["GenePosMin"].fillna(df["Position"])
+    df["GenePosMax"] = df["GenePosMax"].fillna(df["Position"])
     auxDf = (df[["CHROM", "Position", "GeneName", "GenePosMin", "GenePosMax"]]
             .value_counts().loc[lambda x: x > 1]
             .reset_index(name="Count")
@@ -2166,10 +2216,13 @@ def _graphHeatmapPresencePerRun(df, ref):
     with open(filePath, "w") as f:
         f.write("Chromosome\tGeneName\tGroup")
 
-    with multiprocessing.Pool(processes=max(1, numProcesses // 4)) as pool:
-        pool.starmap(_graphHeatmapPresencePerRun_plotGroup, [(df, chrom, group, samples, pltSize, cmap, tickSize, geneSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref)
+    numPlottingProcesses = min(4, max(1, multiprocessing.cpu_count() // 4))
+    with multiprocessing.Pool(processes=numPlottingProcesses) as pool:
+        pool.starmap(_graphHeatmapPresencePerRun_plotGroup, [
+            (df[(df.CHROM == chrom) & (df.Group == group)].copy(), chrom, group, samples, pltSize, cmap, tickSize, geneSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref)
             for chrom in df.CHROM.unique()
-            for group in df[df.CHROM == chrom].Group.unique()])
+            for group in df[df.CHROM == chrom].Group.unique()
+        ])
 
         if len(dfPerGene) > 0:
             df = dfPerGene.drop(columns=["Count", "Sum", "Group"])
@@ -2183,7 +2236,9 @@ def _graphHeatmapPresencePerRun(df, ref):
             df = df.merge(dfAux, left_index=True, right_index=True)
             df = df.reset_index()
 
-        pool.starmap(_graphHeatmapPresencePerRun_plotGeneGroup, [(df, chrom, gene, group, samples, pltSize, cmap, tickSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref)
-            for chrom in df.CHROM.unique()
-            for gene in dfPerGene.GeneName.unique()
-            for group in df[(df.GeneName == gene) & (df.CHROM == chrom)].Group.unique()])
+            pool.starmap(_graphHeatmapPresencePerRun_plotGeneGroup, [
+                (df[(df.CHROM == chrom) & (df.GeneName == gene) & (df.Group == group)].copy(), chrom, gene, group, samples, pltSize, cmap, tickSize, titleSize, titlePadding, minColor, maxColor, colorBarLabelSize, ref)
+                for chrom in df.CHROM.unique()
+                for gene in dfPerGene.GeneName.unique()
+                for group in df[(df.GeneName == gene) & (df.CHROM == chrom)].Group.unique()
+            ])

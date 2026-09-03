@@ -3,9 +3,11 @@ configuration variables.
 """
 
 import os
+import sys
 import glob
 import re
 import shlex
+import shutil
 
 
 step = ""
@@ -21,10 +23,28 @@ pathogenReferenceGenesPaths = []
 pathogenReferenceProteinPaths = []
 pathogenReferenceGenesFormats = []
 workPath = ""
+slurmPartition = ""
+slurmNodelist = ""
+
+def _resolveTool(tool_name):
+    """Resolves tool executable path from environment or PATH."""
+    sys_bin = os.path.dirname(sys.executable)
+    candidate = os.path.join(sys_bin, tool_name)
+    if os.path.exists(candidate) and os.access(candidate, os.X_OK):
+        return candidate
+    conda_prefix = os.environ.get("CONDA_PREFIX")
+    if conda_prefix:
+        candidate = os.path.join(conda_prefix, "bin", tool_name)
+        if os.path.exists(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    which_path = shutil.which(tool_name)
+    if which_path:
+        return which_path
+    return tool_name
 
 def setWorkPath(workPathP):
     global workPath 
-    workPath = workPathP
+    workPath = os.path.abspath(workPathP) if workPathP else os.path.abspath(".")
 
 def loadConfig(configDir="config/", stepP=None, resumeFromP=None):
     global reditoolsAnalyze, reditoolsFindRepeats, jacusa, bcftools, workPath
@@ -65,6 +85,20 @@ def loadConfig(configDir="config/", stepP=None, resumeFromP=None):
                 global slurmCpus
                 val = line.split()[1]
                 slurmCpus = f"{int(val)}"
+            elif line.startswith("slurmPartition"):
+                global slurmPartition
+                val = line.split()[1]
+                if val == "None":
+                    slurmPartition = ""
+                else:
+                    slurmPartition = val
+            elif line.startswith("slurmNodelist"):
+                global slurmNodelist
+                val = line.split()[1]
+                if val == "None":
+                    slurmNodelist = ""
+                else:
+                    slurmNodelist = val
             elif line.startswith("slurm"):
                 global slurm
                 val = line.split()[1]
@@ -142,11 +176,7 @@ def loadConfig(configDir="config/", stepP=None, resumeFromP=None):
                 global sratoolkitPath
                 val = line.split()[1]
                 if val == "None":
-                    auto_path = os.path.expanduser("~/.snvguru/tools/sratoolkit/bin/")
-                    if os.path.exists(os.path.join(auto_path, "prefetch")):
-                        sratoolkitPath = auto_path
-                    else:
-                        sratoolkitPath = ""
+                    sratoolkitPath = ""
                 else:
                     sratoolkitPath = f"{val}/"
             # SAMtools path
@@ -154,7 +184,7 @@ def loadConfig(configDir="config/", stepP=None, resumeFromP=None):
                 global samtoolsPath
                 val = line.split()[1]
                 if val == "None":
-                    samtoolsPath = "samtools"
+                    samtoolsPath = _resolveTool("samtools")
                 else:
                     samtoolsPath = val
             # FastQC
@@ -162,7 +192,7 @@ def loadConfig(configDir="config/", stepP=None, resumeFromP=None):
                 global fastqcPath
                 val = line.split()[1]
                 if val == "None":
-                    fastqcPath = f"fastqc"
+                    fastqcPath = _resolveTool("fastqc")
                 else:
                     fastqcPath = val
             # Qualimap
@@ -170,7 +200,7 @@ def loadConfig(configDir="config/", stepP=None, resumeFromP=None):
                 global qualimapPath
                 val = line.split()[1]
                 if val == "None":
-                    qualimapPath = f"qualimap"
+                    qualimapPath = _resolveTool("qualimap")
                 else:
                     qualimapPath = val
             elif line.startswith("qualimapMaxError"):
@@ -189,7 +219,7 @@ def loadConfig(configDir="config/", stepP=None, resumeFromP=None):
                 global trimmomaticPath
                 val = line.split()[1]
                 if val == "None":
-                    trimmomaticPath = f"trimmomatic"
+                    trimmomaticPath = _resolveTool("trimmomatic")
                 else:
                     trimmomaticPath = val
                     if trimmomaticPath.endswith('.jar'):
@@ -198,7 +228,7 @@ def loadConfig(configDir="config/", stepP=None, resumeFromP=None):
                 global trimGalorePath
                 val = line.split()[1]
                 if val == "None":
-                    trimGalorePath = "trim_galore"
+                    trimGalorePath = _resolveTool("trim_galore")
                 else:
                     trimGalorePath = val
             elif line.startswith("cropMinMeanQuality"):
@@ -270,14 +300,14 @@ def loadConfig(configDir="config/", stepP=None, resumeFromP=None):
                 global bcftoolsPath
                 val = line.split()[1]
                 if val == "None":
-                    bcftoolsPath = "bcftools"
+                    bcftoolsPath = _resolveTool("bcftools")
                 else:
                     bcftoolsPath = val
             elif line.startswith("jacusaPath"):
                 global jacusaPath
                 val = line.split()[1]
                 if val == "None":
-                    jacusaPath = f"JACUSA2"
+                    jacusaPath = _resolveTool("JACUSA2")
                 else:
                     jacusaPath = val
                     if jacusaPath.endswith('.jar'):
@@ -315,7 +345,7 @@ def loadConfig(configDir="config/", stepP=None, resumeFromP=None):
                 global snpEffPath
                 val = line.split()[1].strip()
                 if val == "None":
-                    snpEffPath = f"snpEff"
+                    snpEffPath = _resolveTool("snpEff")
                 else: 
                     snpEffPath = val
                     if snpEffPath.endswith('.jar'):
@@ -684,7 +714,7 @@ def loadConfig(configDir="config/", stepP=None, resumeFromP=None):
                 global starPath
                 val = line.split()[1]
                 if val == "None":
-                    starPath = "STAR"
+                    starPath = _resolveTool("STAR")
                 else:
                     starPath = val
             if line.startswith("magicblastPath"):
@@ -698,7 +728,7 @@ def loadConfig(configDir="config/", stepP=None, resumeFromP=None):
                 global minimapPath
                 val = line.split()[1]
                 if val == "None":
-                    minimapPath = "minimap2"
+                    minimapPath = _resolveTool("minimap2")
                 else:
                     minimapPath = val
             if line.startswith("gmapPath"):

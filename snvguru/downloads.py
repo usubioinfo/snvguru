@@ -91,7 +91,8 @@ def _ensureSraToolkit():
     out = res.stdout.decode("utf-8")
     
     if res.returncode != 0 and ("GLIBC" in err or "GLIBC" in out or "not found" in err or "not found" in out):
-        tools_dir = os.path.expanduser("~/.snvguru/tools")
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        tools_dir = os.path.join(repo_root, "tools")
         sra_bin_dir = os.path.join(tools_dir, "sratoolkit", "bin")
         if not os.path.exists(os.path.join(sra_bin_dir, "prefetch")):
             log.info("Host GLIBC compatibility issue detected with sra-tools. Automatically downloading NCBI static binaries for CentOS/Linux...")

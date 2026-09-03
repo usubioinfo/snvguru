@@ -8,10 +8,53 @@ from snvguru import logger
 import glob
 import pathlib
 import math
+import os
+import shutil
+import subprocess
 from Bio import SeqIO
 
 log = logger.logger
 alignmentDir = config.workPath + "/2-alignment"
+
+def _ensureHisat2():
+    """Checks if hisat2-build works on the host/compute CPU.
+    If it fails due to CPU instruction incompatibility (e.g. Illegal instruction / AVX2),
+    it automatically downloads the generic SSE2 Linux_x86_64 build from the authors.
+    """
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    tools_dir = os.path.join(repo_root, "tools")
+    hisat_dir = os.path.join(tools_dir, "hisat2")
+    
+    if os.path.exists(os.path.join(hisat_dir, "hisat2-build")):
+        config.hisat2Path = hisat_dir + "/"
+        return
+
+    cmd = f"{config.hisat2Path}hisat2-build-s --version"
+    res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if res.returncode != 0:
+        if not os.path.exists(os.path.join(hisat_dir, "hisat2-build")):
+            log.info("Host CPU compatibility issue detected with hisat2. Automatically downloading generic x86_64 HISAT2 build...")
+            os.makedirs(tools_dir, exist_ok=True)
+            zip_path = os.path.join(tools_dir, "hisat2.zip")
+            url = "https://cloud.biohpc.swmed.edu/index.php/s/oTtGWbWjaxsQ2Ho/download"
+            try:
+                import urllib.request
+                import zipfile
+                urllib.request.urlretrieve(url, zip_path)
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(tools_dir)
+                for d in glob.glob(os.path.join(tools_dir, "hisat2-2.*")):
+                    target = os.path.join(tools_dir, "hisat2")
+                    if os.path.exists(target):
+                        shutil.rmtree(target)
+                    os.rename(d, target)
+                if os.path.exists(zip_path):
+                    os.remove(zip_path)
+            except Exception as e:
+                log.error(f"Failed to auto-download generic HISAT2: {e}")
+                return
+        config.hisat2Path = hisat_dir + "/"
+        log.info(f"Using generic HISAT2 from {config.hisat2Path}")
 
 def runHisat2(sras, host):
     """Runs Hisat2 aligner.
@@ -27,9 +70,11 @@ def runHisat2(sras, host):
             * A list of the paths for the input run (one file if single-end, two if paired-end) 
             * Run type. "single" if single-end, "paired" if paired-end
             * Run ID      
+
         host (bool): Switch that tells if the alignment must be done against the host or the viral genomes.
 
     """
+    _ensureHisat2()
     alignmentSubDir = alignmentDir + "/" + ("host" if host else "pathogen")
     indexDir = alignmentSubDir + "/indices/hisat2"
     util.makeDirectory(indexDir)
@@ -79,6 +124,7 @@ def runBWA(sras, host):
             * A list of the paths for the input run (one file if single-end, two if paired-end) 
             * Run type. "single" if single-end, "paired" if paired-end
             * Run ID  
+
         host (bool): Switch that tells if the alignment must be done against the host or the viral genomes.
     """
     alignmentSubDir = alignmentDir + "/" + ("host" if host else "pathogen")
@@ -136,6 +182,7 @@ def runSTAR(sras, host):
             * A list of the paths for the input run (one file if single-end, two if paired-end) 
             * Run type. "single" if single-end, "paired" if paired-end
             * Run ID  
+
         host (bool): Switch that tells if the alignment must be done against the host or the viral genomes.
     """
     alignmentSubDir = alignmentDir + "/" + ("host" if host else "pathogen")
@@ -149,22 +196,24 @@ def runSTAR(sras, host):
     jobsRef = {}
     jobs = [] 
     for fullRef in refs:
-        bases = 14
-        for rec in SeqIO.parse(fullRef, "fasta"):
-            bases = len(rec.seq)
-        bases = min(14, int(math.log(bases, 2)/2 - 1))
+        total_bases = sum(len(rec.seq) for rec in SeqIO.parse(fullRef, "fasta"))
+        num_seqs = len(list(SeqIO.parse(fullRef, "fasta")))
+        bases = max(1, min(14, int(math.log2(total_bases)/2 - 1))) if total_bases > 0 else 14
+        chr_bin = max(1, min(18, int(math.log2(total_bases / max(1, num_seqs))))) if total_bases > 0 else 18
         path = pathlib.Path(fullRef)
         ref = path.parent.name
         log.info(f"Building STAR index file for {ref}...")
         util.makeDirectory(f"{indexDir}/{ref}_star")
         util.makeDirectory(f"{samDir}/{ref}")
+        util.makeDirectory(f"{starDir}/{ref}")
         files = glob.glob(f"{indexDir}/{ref}_star.done")
-        if len(files) > 0:
+        index_files = glob.glob(f"{indexDir}/{ref}_star/Genome*")
+        if len(files) > 0 and len(index_files) > 0:
             log.info(f"STAR index for {ref} already built.")
             jobsRef[ref] = ""
         else:
             params = config.starIndexH if host else config.starIndexV
-            cmd = f"{config.starPath} --runThreadN {config.threads} --runMode genomeGenerate --genomeSAindexNbases {bases} --genomeDir {indexDir}/{ref}_star --genomeFastaFiles {fullRef} {params}"
+            cmd = f"{config.starPath} --runThreadN {config.threads} --runMode genomeGenerate --genomeSAindexNbases {bases} --genomeChrBinNbits {chr_bin} --genomeDir {indexDir}/{ref}_star --genomeFastaFiles {fullRef} {params}"
             jobsRef[ref] = util.runCommand(cmd, jobName="starBuild", outFile=f"{indexDir}/{ref}_star.done")
         for sra in sras:
             files = ""
@@ -177,7 +226,7 @@ def runSTAR(sras, host):
             prefix = sra[2]
             params = config.starMappingH if host else config.starMappingV
             cmd = f"{config.starPath} --runThreadN {config.threads} --runMode alignReads --readFilesIn {files} --genomeDir {indexDir}/{ref}_star --outFileNamePrefix {starDir}/{ref}/{prefix} --outSAMunmapped Within {params}"
-            cmd += f" && mv {starDir}/{ref}/{prefix}Aligned.out.sam {samDir}/{ref}/{prefix}_{config.alignmentSoftwareHost}.sam"
+            cmd += f" && mv {starDir}/{ref}/{prefix}Aligned.out.sam {samDir}/{ref}/{prefix}_star.sam"
             util.runCommand(cmd, jobName="star", jobs=jobs, dep=jobsRef[ref])
     util.waitForJobs(jobs)
 
@@ -195,6 +244,7 @@ def runMagicBlast(sras, host):
             * A list of the paths for the input run (one file if single-end, two if paired-end) 
             * Run type. "single" if single-end, "paired" if paired-end
             * Run ID  
+
         host (bool): Switch that tells if the alignment must be done against the host or the viral genomes.
     """
     alignmentSubDir = alignmentDir + "/" + ("host" if host else "pathogen")
@@ -247,6 +297,7 @@ def runMinimap2(sras, host):
             * A list of the paths for the input run (one file if single-end, two if paired-end) 
             * Run type. "single" if single-end, "paired" if paired-end
             * Run ID  
+
         host (bool): Switch that tells if the alignment must be done against the host or the viral genomes.
     """
     alignmentSubDir = alignmentDir + "/" + ("host" if host else "pathogen")
@@ -299,6 +350,7 @@ def runGMAP(sras, host):
             * A list of the paths for the input run (one file if single-end, two if paired-end) 
             * Run type. "single" if single-end, "paired" if paired-end
             * Run ID  
+
         host (bool): Switch that tells if the alignment must be done against the host or the viral genomes.
     """
     alignmentSubDir = alignmentDir + "/" + ("host" if host else "pathogen")
@@ -481,6 +533,6 @@ def sortAlignments(sras):
             log.info(f"Sorting run with ID {run} vs {ref} BAM file...")
             cmd = f"{config.samtoolsPath} sort -O BAM -o {bamDir}/{ref}/{run}_{config.alignmentSoftwarePathogen}.sorted.bam {samDir}/{ref}/{run}_{config.alignmentSoftwarePathogen}.sam"
             jobId = util.runCommand(cmd, jobName="sort", jobs=jobs)
-            cmd = f"samtools calmd -b {bamDir}/{ref}/{run}_{config.alignmentSoftwarePathogen}.sorted.bam {fullRef}"
-            util.runCommand(cmd, jobName="calmd", jobs=jobs, outFile=f"{bamDir}/{ref}/{run}_{config.alignmentSoftwarePathogen}.bam", dep=jobId)
+            cmd = f"{config.samtoolsPath} calmd -b {bamDir}/{ref}/{run}_{config.alignmentSoftwarePathogen}.sorted.bam {fullRef} > {bamDir}/{ref}/{run}_{config.alignmentSoftwarePathogen}.bam && {config.samtoolsPath} index {bamDir}/{ref}/{run}_{config.alignmentSoftwarePathogen}.bam"
+            util.runCommand(cmd, jobName="calmd", jobs=jobs, dep=jobId)
     util.waitForJobs(jobs)
